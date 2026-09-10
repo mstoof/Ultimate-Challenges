@@ -7,6 +7,7 @@ import { auth, signOut } from "@/lib/auth";
 import { sportEmoji, logoSrc } from "@/lib/logo";
 import Logo from "./Logo";
 import Brand from "./Brand";
+import { AppleIcon, GoogleIcon } from "./icons";
 
 export const dynamic = "force-dynamic";
 
@@ -157,11 +158,17 @@ export default async function Home() {
         <Link href="/new" className="btn btn--solid">
           Event toevoegen
         </Link>
-        <a href={webcalUrl} className="btn">
-          Apple Agenda
+        <a href={webcalUrl} className="btn btn--icon" aria-label="Abonneer via Apple Agenda">
+          <AppleIcon />
         </a>
-        <a href={googleCalUrl} target="_blank" rel="noreferrer" className="btn">
-          Google Agenda
+        <a
+          href={googleCalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn--icon"
+          aria-label="Abonneer via Google Agenda"
+        >
+          <GoogleIcon />
         </a>
       </div>
     </main>
