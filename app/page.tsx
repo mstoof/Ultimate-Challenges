@@ -101,6 +101,13 @@ export default async function Home() {
     await signOut({ redirectTo: "/login" });
   }
 
+  // Abonneren i.p.v. eenmalig downloaden, zodat updates vanzelf binnenkomen.
+  // Apple begrijpt webcal://; Google/Android niet, die heeft een eigen
+  // "abonneer via URL"-deeplink (feed moet wel via https draaien).
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const webcalUrl = `${site.replace(/^https?:\/\//, "webcal://")}/api/calendar.ics`;
+  const googleCalUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl)}`;
+
   return (
     <main className="home">
       <header className="home__mast">
@@ -150,8 +157,11 @@ export default async function Home() {
         <Link href="/new" className="btn btn--solid">
           Event toevoegen
         </Link>
-        <a href="/api/calendar.ics" className="btn">
-          Agenda-feed
+        <a href={webcalUrl} className="btn">
+          Apple Agenda
+        </a>
+        <a href={googleCalUrl} target="_blank" rel="noreferrer" className="btn">
+          Google Agenda
         </a>
       </div>
     </main>
