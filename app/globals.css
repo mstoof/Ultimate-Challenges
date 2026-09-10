@@ -265,7 +265,7 @@ textarea { resize: vertical; }
     --danger: #e0685b;
   }
   /* Zachte hover in het donker (de basisregel is 55% wit). */
-  .home__row:hover { background: rgba(255, 255, 255, 0.025); }
+  .home__row:hover { background: rgba(255, 255, 255, 0.015); }
   /* Lime accenten blijven licht van kleur, dus houd de tekst erop donker. */
   .pill--support,
   .event__choice button[data-selected="true"][data-role="support"] { color: #14170f; }
