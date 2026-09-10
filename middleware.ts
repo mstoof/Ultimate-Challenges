@@ -1,13 +1,18 @@
-import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 /**
+ * Draait op de Edge runtime, dus hier géén next-auth importeren: dat sleept de
+ * hele Auth.js-stack (jose, DecompressionStream) mee en dat werkt niet op Edge.
+ * We checken alleen of er een sessiecookie is; de pagina's en routes valideren
+ * de sessie zelf nog met auth() op de Node-runtime.
+ *
  * Publiek moet blijven:
- *  - /e/[slug]        anders ziet WhatsApp geen preview en klikt niemand door
+ *  - /e/[slug]         anders ziet WhatsApp geen preview en klikt niemand door
  *  - /api/calendar.ics Google haalt die op zonder cookies
- * Aanmelden vereist wel een sessie, dat handelt de pagina zelf af.
+ *  - de losse ICS-routes en de auth-endpoints
  */
-export default auth((req) => {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isPublic =
@@ -17,12 +22,17 @@ export default auth((req) => {
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth");
 
-  if (isPublic || req.auth) return NextResponse.next();
+  // Auth.js-sessiecookie: http -> authjs.session-token, https -> __Secure-...
+  const hasSession =
+    req.cookies.has("authjs.session-token") ||
+    req.cookies.has("__Secure-authjs.session-token");
+
+  if (isPublic || hasSession) return NextResponse.next();
 
   const url = new URL("/login", req.nextUrl.origin);
   url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
