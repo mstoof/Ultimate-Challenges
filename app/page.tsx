@@ -34,7 +34,10 @@ export default async function Home() {
   const dated = rows
     .filter((e): e is Event & { startsAt: Date } => e.startsAt != null && e.startsAt >= since)
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
-  const someday = rows.filter((e) => e.startsAt == null);
+  // Ooit-lijst: nieuwste bovenaan (zo staat de laatst toegevoegde, Norseman, top).
+  const someday = rows
+    .filter((e) => e.startsAt == null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const thisYear = new Date().getFullYear();
   // Dit jaar en volgend jaar zijn er altijd; extra jaren alleen als er events zijn.
@@ -135,7 +138,7 @@ export default async function Home() {
           <section className="home__section">
             <h2 className="home__heading">Ooit — bucketlist</h2>
             {someday.length ? (
-              <ol className="home__list">{someday.map(row)}</ol>
+              <ol className="home__list home__scroll">{someday.map(row)}</ol>
             ) : (
               <p className="home__none">Nog niks op de someday-lijst.</p>
             )}
