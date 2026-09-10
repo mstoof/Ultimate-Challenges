@@ -8,6 +8,7 @@ import { googleCalendarUrl } from "@/lib/calendar";
 import { auth } from "@/lib/auth";
 import { sportEmoji, logoSrc } from "@/lib/logo";
 import Logo from "@/app/Logo";
+import CopyEventButton from "./CopyEventButton";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -102,6 +103,24 @@ export default async function EventPage({ params, searchParams }: Props) {
     `Meld je aan of kom supporten: ${eventUrl}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
+  // Kant-en-klaar blok om in een WhatsApp-event te plakken (naam/datum/locatie
+  // zijn losse velden, de beschrijving is vrij tekst).
+  const details = [
+    `${event.sport}${event.distance ? ` · ${event.distance}` : ""}`,
+    event.price || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const eventCopy = [
+    `Naam: ${event.title}`,
+    `Wanneer: ${event.startsAt ? when : "Nog te plannen"}`,
+    `Locatie: ${event.location}`,
+    `Beschrijving:`,
+    [details, event.description || null, `Meld je aan of kom supporten: ${eventUrl}`]
+      .filter(Boolean)
+      .join("\n"),
+  ].join("\n");
+
   const isMine = !!session?.user?.id && session.user.id === event.createdBy;
 
   return (
@@ -189,6 +208,8 @@ export default async function EventPage({ params, searchParams }: Props) {
         <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn--wa">
           Deel in WhatsApp
         </a>
+        {/* Klembord: plak dit in een WhatsApp-community-event (kan niet via API). */}
+        <CopyEventButton text={eventCopy} />
         {/* Agenda-knoppen alleen bij een echte datum; een ooit-event heeft er geen. */}
         {event.startsAt && (
           <>
