@@ -23,6 +23,10 @@ export const users = pgTable("users", {
   // iemand voor het eerst op een magic link klikt.
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
+  // "member" of "admin". Super-admin is vast op e-mailadres (zie lib/admin.ts).
+  role: text("role").notNull().default("member"),
+  // Laatste keer dat iemand de app opende — voor het ledenoverzicht.
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

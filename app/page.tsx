@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { asc, inArray } from "drizzle-orm";
+import { asc, inArray, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { events, rsvps } from "@/db/schema";
+import { events, rsvps, users } from "@/db/schema";
 import type { Event } from "@/db/schema";
 import { auth, signOut } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 import { sportEmoji, logoSrc } from "@/lib/logo";
 import Logo from "./Logo";
 import Brand from "./Brand";
@@ -25,6 +26,12 @@ function until(date: Date) {
 
 export default async function Home() {
   const session = await auth();
+
+  // Registreer dat dit lid de app opende (voor het admin-ledenoverzicht).
+  if (session?.user?.id) {
+    await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, session.user.id));
+  }
+  const admin = isAdmin(session?.user?.email, session?.user?.role);
 
   // Gisteren als ondergrens: een event van vanochtend wil je vandaag nog zien.
   const since = new Date(Date.now() - 86400000);
@@ -116,11 +123,18 @@ export default async function Home() {
           <Brand />
           <h1>Ultimate Challenges</h1>
         </div>
-        <form action={logout}>
-          <button type="submit" className="home__logout">
-            {session?.user?.name ?? "Uitloggen"}
-          </button>
-        </form>
+        <div className="home__account">
+          {admin && (
+            <Link href="/admin" className="home__admin">
+              Admin
+            </Link>
+          )}
+          <form action={logout}>
+            <button type="submit" className="home__logout">
+              {session?.user?.name ?? "Uitloggen"}
+            </button>
+          </form>
+        </div>
       </header>
 
       {shown.length === 0 ? (

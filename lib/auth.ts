@@ -81,8 +81,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return allowed.includes((user.email ?? "").toLowerCase());
     },
     async session({ session, user }) {
-      // De pagina's lezen session.user.id, dus die moet erin.
+      // De pagina's lezen session.user.id en .role, dus die moeten erin.
       session.user.id = user.id;
+      session.user.role = (user as { role?: string }).role ?? "member";
       return session;
     },
   },
