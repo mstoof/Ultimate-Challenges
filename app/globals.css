@@ -10,28 +10,6 @@
   --danger: #9a2c21;
 }
 
-/* Donkere modus: volgt automatisch de systeeminstelling van het toestel.
-   De variabelen "kantelen" — chalk/paper worden donker, pine (inkt) wordt licht. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chalk: #12150f;
-    --paper: #1b1f19;
-    --pine: #e9ebe3;
-    --mute: #909a8d;
-    --line: #2d332b;
-    --lane: #3f83cf;
-    --danger: #e0685b;
-  }
-  .home__row:hover { background: rgba(255, 255, 255, 0.03); }
-  /* Lime accenten blijven licht van kleur, dus houd de tekst erop donker. */
-  .pill--support,
-  .event__choice button[data-selected="true"][data-role="support"] { color: #14170f; }
-  /* Lichte, hardcoded vlakken donker maken. */
-  .form__error,
-  .login__error { background: #2a1816; }
-  .event__new { background: #16241b; border-color: #2b4a37; }
-}
-
 * { box-sizing: border-box; }
 
 body {
@@ -271,4 +249,28 @@ textarea { resize: vertical; }
 .login button[type="submit"] {
   width: 100%; min-height: 48px; font-weight: 600;
   background: var(--pine); color: var(--chalk); border: 0; border-radius: 2px; cursor: pointer;
+}
+
+/* ------------------------------ dark mode ------------------------------- */
+/* Helemaal onderaan zodat de overrides de basisregels winnen (zelfde
+   specificiteit -> laatste in de bron wint). Volgt automatisch het systeem. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chalk: #12150f;
+    --paper: #1b1f19;
+    --pine: #e9ebe3;
+    --mute: #909a8d;
+    --line: #2d332b;
+    --lane: #3f83cf;
+    --danger: #e0685b;
+  }
+  /* Zachte hover in het donker (de basisregel is 55% wit). */
+  .home__row:hover { background: rgba(255, 255, 255, 0.025); }
+  /* Lime accenten blijven licht van kleur, dus houd de tekst erop donker. */
+  .pill--support,
+  .event__choice button[data-selected="true"][data-role="support"] { color: #14170f; }
+  /* Lichte, hardcoded vlakken donker maken. */
+  .form__error,
+  .login__error { background: #2a1816; }
+  .event__new { background: #16241b; border-color: #2b4a37; }
 }
