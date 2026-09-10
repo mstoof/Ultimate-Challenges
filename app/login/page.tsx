@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { signIn, auth } from "@/lib/auth";
+import Brand from "@/app/Brand";
 
 type Props = { searchParams: Promise<{ check?: string; error?: string; next?: string }> };
 
@@ -33,7 +34,10 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <main className="login">
-      <h1>Ultimate Challenges</h1>
+      <div className="login__brand">
+        <Brand size={52} />
+        <h1>Ultimate Challenges</h1>
+      </div>
       <p>Vul je mailadres in, dan sturen we een inloglink. Een wachtwoord heb je niet nodig.</p>
 
       {error === "email" && <p className="login__error">Dat lijkt geen geldig mailadres.</p>}

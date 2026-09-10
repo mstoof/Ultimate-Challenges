@@ -20,7 +20,9 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/api/calendar.ics") ||
     pathname.startsWith("/api/event/") ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/api/auth");
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/icon") || // het tab-icoon moet altijd laden
+    pathname.startsWith("/apple-icon");
 
   // Auth.js-sessiecookie: http -> authjs.session-token, https -> __Secure-...
   const hasSession =

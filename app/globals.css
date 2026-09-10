@@ -37,6 +37,9 @@ a { color: inherit; text-decoration: none; }
 
 .home__mast { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .home__mast h1 { margin: 0; }
+.home__brand { display: flex; align-items: center; gap: 11px; }
+.login__brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.login__brand h1 { margin: 0; }
 .home__logout {
   background: var(--paper); border: 1px solid var(--line); border-radius: 2px;
   padding: 7px 13px; font: inherit; font-size: 13px; color: var(--mute); cursor: pointer;

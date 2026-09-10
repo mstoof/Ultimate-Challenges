@@ -6,6 +6,7 @@ import type { Event } from "@/db/schema";
 import { auth, signOut } from "@/lib/auth";
 import { sportEmoji, logoSrc } from "@/lib/logo";
 import Logo from "./Logo";
+import Brand from "./Brand";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,10 @@ export default async function Home() {
   return (
     <main className="home">
       <header className="home__mast">
-        <h1>Ultimate Challenges</h1>
+        <div className="home__brand">
+          <Brand />
+          <h1>Ultimate Challenges</h1>
+        </div>
         <form action={logout}>
           <button type="submit" className="home__logout">
             {session?.user?.name ?? "Uitloggen"}
