@@ -1,0 +1,152 @@
+import Link from "next/link";
+import { asc, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { events, rsvps } from "@/db/schema";
+import type { Event } from "@/db/schema";
+import { auth, signOut } from "@/lib/auth";
+import { sportEmoji, logoSrc } from "@/lib/logo";
+import Logo from "./Logo";
+
+export const dynamic = "force-dynamic";
+
+const DAYS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+
+function until(date: Date) {
+  const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  if (days === 0) return "vandaag";
+  if (days === 1) return "morgen";
+  if (days < 14) return `over ${days} dagen`;
+  if (days < 60) return `over ${Math.round(days / 7)} weken`;
+  return `over ${Math.round(days / 30)} maanden`;
+}
+
+export default async function Home() {
+  const session = await auth();
+
+  // Gisteren als ondergrens: een event van vanochtend wil je vandaag nog zien.
+  const since = new Date(Date.now() - 86400000);
+  const rows = await db.select().from(events).orderBy(asc(events.startsAt));
+
+  // Drie lagen: dit jaar, volgend jaar en "ooit" (bucketlist zonder datum).
+  // Verlopen events (voor gisteren) vallen weg; ooit-events blijven altijd staan.
+  const dated = rows
+    .filter((e): e is Event & { startsAt: Date } => e.startsAt != null && e.startsAt >= since)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const someday = rows.filter((e) => e.startsAt == null);
+
+  const thisYear = new Date().getFullYear();
+  // Dit jaar en volgend jaar zijn er altijd; extra jaren alleen als er events zijn.
+  const years = Array.from(
+    new Set([thisYear, thisYear + 1, ...dated.map((e) => e.startsAt.getFullYear())])
+  ).sort((a, b) => a - b);
+
+  const shown = [...dated, ...someday];
+  const all = shown.length
+    ? await db.select().from(rsvps).where(inArray(rsvps.eventId, shown.map((e) => e.id)))
+    : [];
+
+  const countFor = (eventId: string, role: string) =>
+    all.filter((r) => r.eventId === eventId && r.role === role).length;
+  const mineFor = (eventId: string) =>
+    all.find((r) => r.eventId === eventId && r.userId === session?.user?.id)?.role;
+
+  function row(event: Event) {
+    const runners = countFor(event.id, "run");
+    const support = countFor(event.id, "support");
+    const mine = mineFor(event.id);
+    const d = event.startsAt;
+
+    return (
+      <li key={event.id}>
+        <Link href={`/e/${event.slug}`} className="home__row">
+          <Logo src={logoSrc(event.imageUrl, event.signupUrl)} emoji={sportEmoji(event.sport)} />
+          <span className="home__rail">
+            {d ? (
+              <>
+                <span className="home__wd">{DAYS[d.getDay()]}</span>
+                <span className="home__day">{d.getDate()}</span>
+                <span className="home__mo">{MONTHS[d.getMonth()]}</span>
+              </>
+            ) : (
+              <span className="home__someday">ooit</span>
+            )}
+          </span>
+          <span className="home__body">
+            <span className="home__title">{event.title}</span>
+            <span className="home__meta">
+              {event.sport}
+              {event.distance ? ` · ${event.distance}` : ""} · {event.location}
+              {event.price ? ` · ${event.price}` : ""}
+              {d ? ` · ${until(d)}` : ""}
+            </span>
+            <span className="home__tally">
+              <span className="pill pill--run">{runners} doen mee</span>
+              <span className="pill pill--support">{support} support</span>
+              {mine === "run" && <span className="home__mine">jij loopt mee</span>}
+              {mine === "support" && <span className="home__mine">jij bent support</span>}
+            </span>
+          </span>
+        </Link>
+      </li>
+    );
+  }
+
+  async function logout() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
+
+  return (
+    <main className="home">
+      <header className="home__mast">
+        <h1>Ultimate Challenges</h1>
+        <form action={logout}>
+          <button type="submit" className="home__logout">
+            {session?.user?.name ?? "Uitloggen"}
+          </button>
+        </form>
+      </header>
+
+      {shown.length === 0 ? (
+        <p className="home__empty">
+          Niks gepland. Voeg het eerste event toe, dan kan de rest zich aanmelden.
+        </p>
+      ) : (
+        <>
+          {years.map((year) => {
+            const items = dated.filter((e) => e.startsAt.getFullYear() === year);
+            return (
+              <section key={year} className="home__section">
+                <h2 className="home__heading">{year}</h2>
+                {items.length ? (
+                  <ol className="home__list">{items.map(row)}</ol>
+                ) : (
+                  <p className="home__none">Nog niks gepland.</p>
+                )}
+              </section>
+            );
+          })}
+
+          <section className="home__section">
+            <h2 className="home__heading">Ooit — bucketlist</h2>
+            {someday.length ? (
+              <ol className="home__list">{someday.map(row)}</ol>
+            ) : (
+              <p className="home__none">Nog niks op de someday-lijst.</p>
+            )}
+          </section>
+        </>
+      )}
+
+      <div className="home__foot">
+        <Link href="/new" className="btn btn--solid">
+          Event toevoegen
+        </Link>
+        <a href="/api/calendar.ics" className="btn">
+          Agenda-feed
+        </a>
+      </div>
+    </main>
+  );
+}
