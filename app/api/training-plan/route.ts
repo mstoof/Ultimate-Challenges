@@ -133,7 +133,8 @@ export async function POST(req: Request) {
   const baseInstruction =
     `Je bent een ervaren hardloop- en krachttrainer die een trainingsschema maakt voor één sporter. ` +
     `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
-    `Verdeel per week het aantal sessies dat de sporter aankan; leg lange/dubbele trainingen op de dagen waarop hij tijd heeft. ` +
+    `Plan in elke VOLLEDIGE week precies ${profile.sessionsPerWeek} sessies in totaal (looptrainingen, krachtsessies en cross samen; de ${profile.gymDays} krachtsessies tellen hierin mee). ` +
+    `Dubbeltrainingen (twee sessies op één dag) mogen op elke dag; gebruik ze zodra ${profile.sessionsPerWeek} sessies niet meer op losse dagen passen. De opgegeven dagen met meer tijd zijn bedoeld voor de lange of tijdrovende sessies (lange duurloop, brick), niet als enige toegestane dubbeldagen. ` +
     `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
     `Gebruik de gekozen herstelmethoden als concrete, haalbare hersteladviezen in weeknotities of sessiedetails; plan ze niet allemaal elke week en presenteer ze als optionele ondersteuning. ` +
     `Events met "support, geen doelrace" zijn extra agenda-activiteiten: plan die dag gewoon de normale training; maak er geen vervangende support-training, taper of herstelweek van. ` +
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
     `- Sporten: ${sports.join(", ") || "hardlopen"}\n` +
     `- Sessies per week: ${profile.sessionsPerWeek}\n` +
     `- Krachttraining: ${profile.gymDays > 0 ? `${profile.gymDays} dag(en) per week` : "geen"}\n` +
-    `- Dagen voor lange/dubbele trainingen: ${longRunDays.join(", ") || "weekend"}\n` +
+    `- Dagen met meer tijd (voor lange/tijdrovende trainingen): ${longRunDays.join(", ") || "weekend"}\n` +
     `- Niveau/achtergrond: ${profile.experience || "onbekend"}\n` +
     `- Doel: ${profile.goal || "algemeen fitter en sterker worden"}\n\n` +
     `- Gewenste herstelmethoden: ${recoveryMethods.join(", ") || "geen specifieke voorkeur"}\n\n` +

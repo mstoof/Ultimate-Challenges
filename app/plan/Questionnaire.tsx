@@ -132,7 +132,7 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
         <fieldset className="quiz__section">
           <legend>2. Jouw trainingsweek</legend>
           <p className="quiz__hint">Kies een ritme dat in je week past.</p>
-          <label>Op welke dagen heb je tijd voor lange of dubbele trainingen?</label>
+          <label>Op welke dagen heb je meer tijd (voor lange trainingen)?</label>
           <div className="quiz__days">
             {DAYS.map((d) => (
               <label key={d.key} className="quiz__day">
