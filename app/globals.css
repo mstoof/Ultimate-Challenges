@@ -433,3 +433,13 @@ textarea { resize: vertical; }
 .plan__gym summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
 .plan__gym p { line-height: 1.5; }
 .plan__gym .btn { display: inline-flex; flex: 0 0 auto; padding: 10px 14px; }
+
+/* Keep all three tools in fixed columns while their details expand below. */
+.plan__tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 8px; }
+.plan__tools > details,
+.plan__tools > details[open] { grid-column: auto; width: auto; flex: none; }
+.plan__tools > details[open] { padding: 0 12px 12px; }
+@media (max-width: 600px) {
+  .plan__tools { gap: 5px; }
+  .plan__tools > details > summary { padding-left: 5px; padding-right: 5px; font-size: 11px; }
+}

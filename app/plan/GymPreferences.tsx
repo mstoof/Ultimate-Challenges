@@ -11,7 +11,7 @@ export default function GymPreferences({ gymDays, gymSplits }: { gymDays: number
     <details className="plan__gym">
       <summary aria-label="Gymvoorkeuren" title="Gymvoorkeuren"><span aria-hidden="true">🏋️</span> Gym</summary>
       <form action={action}>
-        <p>Richt je krachttraining op de splits die jij wilt doen.</p>
+        <p>Richt je krachttraining op één compleet splitsysteem.</p>
         <label htmlFor="plan-gym-days">Krachttraining (dagen/week)</label>
         <input id="plan-gym-days" name="gymDays" type="number" min="0" max="7" required value={days} onChange={(event) => setDays(event.target.value)} />
         {Number(days) > 0 && <GymSplitPicker initialSplits={gymSplits} />}

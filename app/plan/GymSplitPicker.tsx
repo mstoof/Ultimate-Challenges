@@ -8,14 +8,14 @@ export default function GymSplitPicker({ initialSplits = [] }: { initialSplits?:
   const hintId = useId();
   return (
     <fieldset className="quiz__splits" aria-describedby={hintId}>
-      <legend>Welke gymsplits wil je trainen?</legend>
-      <p className="quiz__hint" id={hintId}>Kies meerdere, bijvoorbeeld Push + Pull + Legs of Upper body + Lower body. We wisselen ze af binnen je gymdagen. Niets gekozen? Dan kiest de coach de indeling.</p>
+      <legend>Welke volledige split wil je trainen?</legend>
+      <p className="quiz__hint" id={hintId}>Kies één compleet systeem. Push / Pull / Legs en Upper / Lower zijn elk één split; de coach wisselt de fases af binnen je gymdagen.</p>
       <div className="quiz__chips">
         {GYM_SPLITS.map((split) => (
           <label key={split.id} className={`quiz__chip${selected.includes(split.id) ? " quiz__chip--on" : ""}`}>
-            <input type="checkbox" name="gymSplits" value={split.id} checked={selected.includes(split.id)}
-              onChange={() => setSelected((previous) => previous.includes(split.id) ? previous.filter((id) => id !== split.id) : [...previous, split.id])} />
-            <span>{split.label}<small className="quiz__split-focus">{split.focus}</small></span>
+            <input type="radio" name="gymSplits" value={split.id} checked={selected.includes(split.id)}
+              onChange={() => setSelected([split.id])} />
+            <span>{split.label}<small className="quiz__split-focus">{split.focus}</small><small className="quiz__split-focus">{split.days}</small></span>
           </label>
         ))}
       </div>
