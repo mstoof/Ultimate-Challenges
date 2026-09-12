@@ -57,6 +57,13 @@
       "when": 1789212987562,
       "tag": "0007_absent_la_nuit",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789216828728,
+      "tag": "0008_conscious_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

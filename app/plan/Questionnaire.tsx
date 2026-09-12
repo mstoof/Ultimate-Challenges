@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SPORTS } from "@/lib/distances";
+import GymSplitPicker from "./GymSplitPicker";
 import { saveProfile } from "./actions";
 
 const DAYS: { key: string; label: string }[] = [
@@ -23,6 +24,7 @@ type RaceHint = { title: string; date: string | null; weeksAway: number | null }
 type RaceOption = { id: string; title: string; date: string | null };
 
 export default function Questionnaire({ races, raceOptions }: { races: RaceHint[]; raceOptions: RaceOption[] }) {
+  const [gymDays, setGymDays] = useState("1");
   const [raceChoice, setRaceChoice] = useState("");
   const selectedRace = raceOptions.find((race) => race.id === raceChoice);
   const [sports, setSports] = useState<string[]>(["Hardlopen"]);
@@ -133,9 +135,10 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
             </div>
             <div>
               <label htmlFor="gymDays">Krachttraining (dagen/week)</label>
-              <input id="gymDays" name="gymDays" type="number" min="0" max="7" defaultValue="1" />
+              <input id="gymDays" name="gymDays" type="number" min="0" max="7" value={gymDays} onChange={(event) => setGymDays(event.target.value)} />
             </div>
           </div>
+          {Number(gymDays) > 0 && <GymSplitPicker />}
         </fieldset>
 
         <fieldset className="quiz__section">

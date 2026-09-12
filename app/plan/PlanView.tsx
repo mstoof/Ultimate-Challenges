@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TrainingBlock, TrainingPlan, TrainingSession } from "@/db/schema";
 import type { ZoneResult } from "@/lib/training";
+import GymPreferences from "./GymPreferences";
 import NotionExport from "./NotionExport";
 import { plusDays } from "@/lib/training-dates";
 import { compactRunText } from "@/lib/plan-display";
 import { toggleDone, resetPlan } from "./actions";
 
 type RaceHint = { title: string; date: string | null; weeksAway: number | null };
-type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; sessionsPerWeek: number };
+type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; gymSplits: string[]; sessionsPerWeek: number };
 
 const DAY_LABEL: Record<string, string> = {
   ma: "ma", di: "di", wo: "wo", do: "do", vr: "vr", za: "za", zo: "zo",
@@ -125,6 +126,7 @@ export default function PlanView({
       <div className="plan__tools">
         <HeartRateZones zones={zones} />
         <NotionExport hasPlan={blocks.length > 0} />
+        <GymPreferences gymDays={profile.gymDays} gymSplits={profile.gymSplits} />
       </div>
 
       {!aiEnabled && (

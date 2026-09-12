@@ -98,6 +98,7 @@ export const trainingProfiles = pgTable("training_profiles", {
   longRunDays: text("long_run_days").notNull().default("[]"), // JSON: ["za","zo"]
   sessionsPerWeek: integer("sessions_per_week").notNull().default(4),
   gymDays: integer("gym_days").notNull().default(0), // 0 = geen kracht/gym
+  gymSplits: text("gym_splits").notNull().default("[]"), // JSON: push, pull, legs, upper, lower, full, core
   experience: text("experience"), // vrij veld: huidig niveau / km per week
   goal: text("goal"), // "wat wil je kunnen worden / doen"
   // Voor de hartslagzones (zones 1–5). age → schatting max-HR als maxHr leeg is;

@@ -6,6 +6,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { trainingProfiles, trainingDone } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { normalizeGymSplits } from "@/lib/gym-splits";
 import { WEEKDAYS } from "@/lib/training";
 
 /** De vragenlijst opslaan (upsert: één profiel per lid). */
@@ -40,6 +41,7 @@ export async function saveProfile(formData: FormData) {
     longRunDays: JSON.stringify(longRunDays),
     sessionsPerWeek,
     gymDays,
+    gymSplits: JSON.stringify(gymDays > 0 ? normalizeGymSplits(formData.getAll("gymSplits")) : []),
     experience,
     goal,
     age,
@@ -105,4 +107,17 @@ function optInt(raw: FormDataEntryValue | null, min: number, max: number): numbe
   const n = Math.round(Number(s));
   if (!Number.isFinite(n) || n < min || n > max) return null;
   return n;
+}
+
+/** Update only gym preferences; keep the plan and completion history intact. */
+export async function saveGymPreferences(_previous: { message: string } | null, formData: FormData): Promise<{ message: string }> {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login?next=/plan");
+  const gymDays = clampInt(formData.get("gymDays"), 0, 7, 0);
+  const gymSplits = gymDays > 0 ? normalizeGymSplits(formData.getAll("gymSplits")) : [];
+  const updated = await db.update(trainingProfiles).set({ gymDays, gymSplits: JSON.stringify(gymSplits), updatedAt: new Date() })
+    .where(eq(trainingProfiles.userId, session.user.id)).returning({ userId: trainingProfiles.userId });
+  if (!updated.length) return { message: "Vul eerst de vragenlijst in." };
+  revalidatePath("/plan");
+  return { message: "Opgeslagen. Genereer een blok opnieuw of bouw een nieuw blok om je voorkeuren te gebruiken." };
 }

@@ -7,7 +7,7 @@ import { decrypt, notionConfigured, sameOrigin } from "@/lib/notion/security";
 import { notionClient, NotionError, oauthRequest } from "@/lib/notion/api";
 import { notionStatus, withConnection } from "@/lib/notion/store";
 import { planTasks } from "@/lib/notion/format";
-import { ensureDatabase, exportBatch } from "@/lib/notion/export";
+import { ensureDatabase, exportBatch, hydratePageMap } from "@/lib/notion/export";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -52,7 +52,9 @@ export async function POST(req: Request) {
           const tasks = planTasks(blocks, done.map((row) => row.sessionId), Object.keys(connection.pageMap));
           if (!tasks.length) throw new NotionError(400, "Je plan bevat geen trainingen.");
           await ensureDatabase(connection, request, pageId);
-          connection.exportJob = { tasks, cursor: 0, startedAt: new Date().toISOString() };
+          await hydratePageMap(connection, request);
+          const hydratedTasks = planTasks(blocks, done.map((row) => row.sessionId), Object.keys(connection.pageMap));
+          connection.exportJob = { tasks: hydratedTasks, cursor: 0, startedAt: new Date().toISOString() };
           await db.update(notionConnections).set({ exportJob: connection.exportJob }).where(eq(notionConnections.userId, connection.userId));
         }
         return json(notionStatus(connection));

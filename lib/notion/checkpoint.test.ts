@@ -19,11 +19,10 @@ it("saves each completed row and resumes from that checkpoint", async () => {
       { sessionId: "a", properties: {} }, { sessionId: "b", properties: {} },
     ] },
   } as unknown as NotionConnection;
-  const request = vi.fn().mockResolvedValueOnce({ results: [] }).mockResolvedValueOnce({ id: "page-a" });
-  expect(await exportBatch(connection, request as NotionClient)).toEqual({ completed: 1, total: 2, finished: false });
-  expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ pageMap: { a: "page-a" }, exportJob: expect.objectContaining({ cursor: 1 }) }));
-  request.mockResolvedValueOnce({ results: [] }).mockResolvedValueOnce({ id: "page-b" });
+  const request = vi.fn().mockResolvedValueOnce({ results: [] }).mockResolvedValueOnce({ id: "page-a" })
+    .mockResolvedValueOnce({ results: [] }).mockResolvedValueOnce({ id: "page-b" });
   expect(await exportBatch(connection, request as NotionClient)).toEqual({ completed: 2, total: 2, finished: true });
+  expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ pageMap: { a: "page-a", b: "page-b" }, exportJob: null }));
   expect(connection.pageMap).toEqual({ a: "page-a", b: "page-b" });
   expect(connection.exportJob).toBeNull();
   expect(connection.lastExportedAt).toBeInstanceOf(Date);

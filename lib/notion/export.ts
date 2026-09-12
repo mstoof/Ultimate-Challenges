@@ -70,12 +70,36 @@ export async function exportTask(request: NotionClient, dataSourceId: string, ta
   return page.id;
 }
 
+/** Load managed session IDs once per export instead of querying Notion for
+ * every row. A first export therefore needs N+1 calls instead of 2N. */
+export async function hydratePageMap(connection: NotionConnection, request: NotionClient): Promise<void> {
+  if (!connection.dataSourceId) throw new NotionError(400, "Start eerst een export.");
+  let cursor: string | null = null;
+  let pagesRead = 0;
+  do {
+    const result: NotionList<NotionPage> = await request<NotionList<NotionPage>>(
+      `/data_sources/${connection.dataSourceId}/query`, "POST",
+      { page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) },
+    );
+    for (const page of result.results) {
+      const property = page.properties?.["Sessie-ID"];
+      const sessionId = property?.rich_text?.map((item) => item.plain_text ?? item.text?.content ?? "").join("");
+      if (sessionId && sessionId.includes(":")) connection.pageMap[sessionId] = page.id;
+    }
+    pagesRead += result.results.length;
+    cursor = result.has_more ? result.next_cursor : null;
+  } while (cursor && pagesRead < 5000);
+  await db.update(notionConnections).set({ pageMap: connection.pageMap })
+    .where(eq(notionConnections.userId, connection.userId));
+}
+
 export async function exportBatch(connection: NotionConnection, request: NotionClient) {
   const job = connection.exportJob;
   if (!job || !connection.dataSourceId) throw new NotionError(400, "Start eerst een export.");
-  // One task per request keeps even token refresh + rate-limit retries within
-  // the Vercel budget. The browser continues until all checkpoints are saved.
-  if (job.cursor < job.tasks.length) {
+  // Notion permits about three requests per second. Process eight rows in one
+  // invocation so the browser does not wait for one request per row.
+  const end = Math.min(job.cursor + 8, job.tasks.length);
+  while (job.cursor < end) {
     const task = job.tasks[job.cursor];
     const pageId = await exportTask(request, connection.dataSourceId, task, connection.pageMap[task.sessionId]);
     if (pageId) connection.pageMap[task.sessionId] = pageId;

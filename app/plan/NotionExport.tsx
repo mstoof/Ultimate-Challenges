@@ -78,8 +78,6 @@ export default function NotionExport({ hasPlan }: { hasPlan: boolean }) {
         data = await post("step");
         if (!mounted.current) return;
         setStatus(data); setProgress(data.result ?? data.progress ?? null);
-        // Respect the integration-wide rate limit between small resumable batches.
-        if (data.progress) await new Promise((resolve) => setTimeout(resolve, 400));
       }
       if (mounted.current) setNotice("Je plan staat in Notion.");
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : "Export onderbroken. Probeer opnieuw."); }

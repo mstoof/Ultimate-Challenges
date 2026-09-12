@@ -6,6 +6,7 @@ import type { TrainingBlock } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { computeZones, loadTargetRaces, weeksUntil } from "@/lib/training";
 import { mondayFor, todayInAmsterdam } from "@/lib/training-dates";
+import { readGymSplits } from "@/lib/gym-splits";
 import Questionnaire from "./Questionnaire";
 import PlanView from "./PlanView";
 
@@ -71,6 +72,7 @@ export default async function PlanPage() {
         sports: safeArr(profile.sports),
         goal: profile.goal,
         gymDays: profile.gymDays,
+        gymSplits: readGymSplits(profile.gymSplits),
         sessionsPerWeek: profile.sessionsPerWeek,
       }}
       blocks={blocks}

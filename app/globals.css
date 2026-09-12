@@ -424,3 +424,12 @@ textarea { resize: vertical; }
 .plan__week details[open] > summary::before { content: "▾"; }
 .plan__week summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
 .plan__week-progress { font-size: 12px; color: var(--mute); white-space: nowrap; }
+
+.quiz__splits { border: 0; padding: 0; margin: 8px 0 16px; min-width: 0; }
+.quiz__splits legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.quiz__split-focus { display: block; font-size: 11px; font-weight: 400; margin-top: 2px; }
+.plan__gym { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 13px; }
+.plan__gym summary { color: var(--lane); font-weight: 600; cursor: pointer; }
+.plan__gym summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
+.plan__gym p { line-height: 1.5; }
+.plan__gym .btn { display: inline-flex; flex: 0 0 auto; padding: 10px 14px; }

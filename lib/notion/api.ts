@@ -69,6 +69,10 @@ export function notionClient(connection: NotionConnection) {
 export type NotionClient = ReturnType<typeof notionClient>;
 export type NotionPage = {
   id: string; object: string; archived?: boolean; in_trash?: boolean;
-  properties?: Record<string, { type?: string; title?: { plain_text?: string; text?: { content: string } }[] }>;
+  properties?: Record<string, {
+    type?: string;
+    title?: { plain_text?: string; text?: { content: string } }[];
+    rich_text?: { plain_text?: string; text?: { content: string } }[];
+  }>;
 };
 export type NotionList<T> = { results: T[]; has_more: boolean; next_cursor: string | null };

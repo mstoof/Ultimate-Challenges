@@ -6,6 +6,7 @@ import type { TrainingPlan, TrainingWeek } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { addWeeks, computeZones, loadTargetRaces, weeksUntil, WEEKS_PER_BLOCK } from "@/lib/training";
 
+import { gymInstructions, readGymSplits } from "@/lib/gym-splits";
 import { allowedDays, mondayFor, plusDays, tomorrowInAmsterdam } from "@/lib/training-dates";
 
 // Bouwt een blok van 10 trainingsweken met Google Gemini, net als de
@@ -123,12 +124,7 @@ export async function POST(req: Request) {
   const sports = safeJsonArray(profile.sports);
   const longRunDays = safeJsonArray(profile.longRunDays);
 
-  const gymRule =
-    profile.gymDays > 0
-      ? `De sporter doet ${profile.gymDays} dag(en) per week kracht. Elke sessie met "type": "gym" krijgt in "exercises" precies 6 oefeningen, ` +
-        `elk met "name" (de oefening) en "prescription" (sets×reps met eventueel gewicht/RPE en rust, bv. "4×8 @ RPE 7, 90s rust"). ` +
-        `Bij alle andere types laat je "exercises" leeg. `
-      : `De sporter doet geen krachttraining: gebruik geen "gym"-sessies en laat "exercises" overal leeg. `;
+  const gymRule = gymInstructions(profile.gymDays, readGymSplits(profile.gymSplits));
 
   const baseInstruction =
     `Je bent een ervaren hardloop- en krachttrainer die een trainingsschema maakt voor één sporter. ` +
