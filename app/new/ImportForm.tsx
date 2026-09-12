@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { importedAmsterdamInput } from "@/lib/timezone";
 import { createEvent } from "./actions";
 import { SPORTS, distanceGroupsForSport } from "@/lib/distances";
 
@@ -32,17 +33,6 @@ const EMPTY: Fields = {
   description: "",
   signupUrl: "",
 };
-
-/** ISO-datum -> waarde voor <input type="datetime-local"> in lokale tijd. */
-function toLocalInput(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
-    d.getMinutes()
-  )}`;
-}
 
 export default function ImportForm({ error }: { error?: string }) {
   const [f, setF] = useState<Fields>(EMPTY);
@@ -76,7 +66,7 @@ export default function ImportForm({ error }: { error?: string }) {
         sport,
         distance: data.distance || prev.distance,
         location: data.location || prev.location,
-        startsAt: toLocalInput(data.startsAt) || prev.startsAt,
+        startsAt: importedAmsterdamInput(data.startsAt) || prev.startsAt,
         someday: !data.startsAt,
         price: data.price || prev.price,
         imageUrl: data.imageUrl || prev.imageUrl,
@@ -177,7 +167,7 @@ export default function ImportForm({ error }: { error?: string }) {
 
         <div className="form__two">
           <div>
-            <label htmlFor="startsAt">Wanneer</label>
+            <label htmlFor="startsAt">Wanneer (Amsterdam)</label>
             <input
               id="startsAt"
               name="startsAt"

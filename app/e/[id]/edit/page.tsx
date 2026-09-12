@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { events } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { amsterdamInput, parseAmsterdam } from "@/lib/timezone";
 import DeleteButton from "./DeleteButton";
 import SportDistance from "./SportDistance";
 
@@ -11,24 +12,6 @@ type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 };
-
-/** Bestaande datum omzetten naar de waarde die <input type="datetime-local"> wil:
- *  "YYYY-MM-DDTHH:mm" in Amsterdamse wandkloktijd. */
-function toInputValue(d: Date | null): string {
-  if (!d) return "";
-  // sv-SE geeft "YYYY-MM-DD HH:mm"; spatie -> T.
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Amsterdam",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .format(d)
-    .replace(" ", "T");
-}
 
 export default async function EditEventPage({ params, searchParams }: Props) {
   const { id } = await params;
@@ -65,7 +48,7 @@ export default async function EditEventPage({ params, searchParams }: Props) {
     let startsAt: Date | null = null;
     let endsAt: Date | null = null;
     if (!someday) {
-      startsAt = new Date(startsAtRaw);
+      startsAt = parseAmsterdam(startsAtRaw);
       if (Number.isNaN(startsAt.getTime())) redirect(`/e/${slug}/edit?error=datum`);
       const hours = Number(formData.get("hours")) || 3;
       endsAt = new Date(startsAt.getTime() + hours * 3600000);
@@ -123,12 +106,12 @@ export default async function EditEventPage({ params, searchParams }: Props) {
 
         <div className="form__two">
           <div>
-            <label htmlFor="startsAt">Wanneer</label>
+            <label htmlFor="startsAt">Wanneer (Amsterdam)</label>
             <input
               id="startsAt"
               name="startsAt"
               type="datetime-local"
-              defaultValue={toInputValue(event.startsAt)}
+              defaultValue={amsterdamInput(event.startsAt)}
             />
           </div>
           <div>

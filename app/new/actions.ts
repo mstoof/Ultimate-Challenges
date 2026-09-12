@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { events, rsvps } from "@/db/schema";
+import { parseAmsterdam } from "@/lib/timezone";
 import { auth } from "@/lib/auth";
 
 function slugify(value: string) {
@@ -42,7 +43,7 @@ export async function createEvent(formData: FormData) {
   let startsAt: Date | null = null;
   let endsAt: Date | null = null;
   if (!someday) {
-    startsAt = new Date(startsAtRaw);
+    startsAt = parseAmsterdam(startsAtRaw);
     if (Number.isNaN(startsAt.getTime())) redirect("/new?error=datum");
     const hours = Number(formData.get("hours")) || 3;
     endsAt = new Date(startsAt.getTime() + hours * 3600000);

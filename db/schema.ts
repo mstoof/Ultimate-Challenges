@@ -184,3 +184,22 @@ export type Event = typeof events.$inferSelect;
 export type Rsvp = typeof rsvps.$inferSelect;
 export type TrainingProfile = typeof trainingProfiles.$inferSelect;
 export type TrainingBlock = typeof trainingBlocks.$inferSelect;
+
+/** OAuth credentials stay server-side and are encrypted separately for each member. */
+export const notionConnections = pgTable("notion_connections", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  workspaceId: text("workspace_id").notNull(),
+  workspaceName: text("workspace_name").notNull(),
+  botId: text("bot_id").notNull(),
+  parentPageId: text("parent_page_id"),
+  databaseId: text("database_id"),
+  dataSourceId: text("data_source_id"),
+  pageMap: jsonb("page_map").$type<Record<string, string>>().notNull().default({}),
+  exportJob: jsonb("export_job").$type<import("@/lib/notion/format").ExportJob>(),
+  lastExportedAt: timestamp("last_exported_at", { withTimezone: true }),
+  lockId: text("lock_id"),
+  lockUntil: timestamp("lock_until", { withTimezone: true }),
+});
+export type NotionConnection = typeof notionConnections.$inferSelect;

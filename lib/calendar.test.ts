@@ -76,13 +76,35 @@ describe("escaping", () => {
 });
 
 describe("tijdzones", () => {
-  it("zet een zomertijd-event om naar UTC met twee uur verschil", () => {
-    // 18 oktober valt nog in CEST (+02:00)
-    const ics = buildSingle(makeEvent());
-    expect(find(ics, "DTSTART:")).toBe("DTSTART:20261018T111500Z");
+  it("includes one Amsterdam timezone definition in both single files and feeds", () => {
+    for (const ics of [buildSingle(makeEvent()), buildFeed([makeEvent(), makeEvent()])]) {
+      expect(lines(ics).filter((line) => line === "BEGIN:VTIMEZONE")).toHaveLength(1);
+      expect(ics).toContain("TZID:Europe/Amsterdam");
+      expect(ics).toContain("X-WR-TIMEZONE:Europe/Amsterdam");
+      expect(ics).toContain("RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU");
+      expect(ics).toContain("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU");
+    }
   });
 
-  it("zet een wintertijd-event om met één uur verschil", () => {
+  it("preserves a three-hour event across the spring clock change", () => {
+    const ics = buildSingle(makeEvent({ startsAt: new Date("2026-03-29T00:30:00Z"), endsAt: null }));
+    expect(find(ics, "DTSTART;TZID=")).toBe("DTSTART;TZID=Europe/Amsterdam:20260329T013000");
+    expect(find(ics, "DTEND;TZID=")).toBe("DTEND;TZID=Europe/Amsterdam:20260329T053000");
+  });
+
+  it("retains the exact instant during the repeated autumn hour", () => {
+    const ics = buildSingle(makeEvent({ startsAt: new Date("2026-10-25T01:30:00Z"), endsAt: null }));
+    const event = ics.slice(ics.indexOf("BEGIN:VEVENT"));
+    expect(find(event, "DTSTART:")).toBe("DTSTART:20261025T013000Z");
+    expect(find(event, "DTEND;TZID=")).toBe("DTEND;TZID=Europe/Amsterdam:20261025T053000");
+  });
+  it("exporteert zomertijd als Amsterdamse lokale tijd", () => {
+    // 18 oktober valt nog in CEST (+02:00)
+    const ics = buildSingle(makeEvent());
+    expect(find(ics, "DTSTART;TZID=")).toBe("DTSTART;TZID=Europe/Amsterdam:20261018T131500");
+  });
+
+  it("exporteert wintertijd als Amsterdamse lokale tijd", () => {
     // 8 november valt na de wissel van eind oktober, dus CET (+01:00)
     const ics = buildSingle(
       makeEvent({
@@ -90,12 +112,12 @@ describe("tijdzones", () => {
         endsAt: new Date("2026-11-08T12:00:00+01:00"),
       })
     );
-    expect(find(ics, "DTSTART:")).toBe("DTSTART:20261108T090000Z");
+    expect(find(ics, "DTSTART;TZID=")).toBe("DTSTART;TZID=Europe/Amsterdam:20261108T100000");
   });
 
   it("neemt drie uur als er geen eindtijd bekend is", () => {
     const ics = buildSingle(makeEvent({ endsAt: null }));
-    expect(find(ics, "DTEND:")).toBe("DTEND:20261018T141500Z");
+    expect(find(ics, "DTEND;TZID=")).toBe("DTEND;TZID=Europe/Amsterdam:20261018T161500");
   });
 });
 
@@ -141,6 +163,13 @@ describe("feed", () => {
 });
 
 describe("google-link", () => {
+  it("preserves winter and clock-change instants while selecting Amsterdam", () => {
+    for (const date of ["2026-11-08T09:00:00Z", "2026-10-25T01:30:00Z", "2026-03-29T00:30:00Z"]) {
+      const url = new URL(googleCalendarUrl(makeEvent({ startsAt: new Date(date), endsAt: null })));
+      expect(url.searchParams.get("ctz")).toBe("Europe/Amsterdam");
+      expect(url.searchParams.get("dates")?.split("/")[0]).toBe(date.replace(/[-:]/g, ""));
+    }
+  });
   it("bevat begin- en eindtijd in UTC en de Amsterdamse tijdzone", () => {
     const url = new URL(googleCalendarUrl(makeEvent()));
     expect(url.searchParams.get("dates")).toBe("20261018T111500Z/20261018T141500Z");

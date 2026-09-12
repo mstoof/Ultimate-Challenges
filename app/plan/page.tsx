@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
+import { events, trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
 import type { TrainingBlock } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { computeZones, loadTargetRaces, weeksUntil } from "@/lib/training";
+import { mondayFor, todayInAmsterdam } from "@/lib/training-dates";
 import Questionnaire from "./Questionnaire";
 import PlanView from "./PlanView";
 
@@ -31,12 +32,21 @@ export default async function PlanPage() {
 
   // Nog geen vragenlijst ingevuld: toon die eerst.
   if (!profile) {
+    const availableRaces = await db
+      .select({ id: events.id, title: events.title, date: events.startsAt })
+      .from(events)
+      .where(or(gt(events.startsAt, new Date()), isNull(events.startsAt)))
+      .orderBy(asc(events.startsAt), asc(events.title));
     return (
       <main className="form">
         <Link href="/" className="form__back">
           ← Terug naar de agenda
         </Link>
-        <Questionnaire races={races.map(raceHint)} />
+        <Questionnaire races={races.map(raceHint)} raceOptions={availableRaces.map((race) => ({
+          id: race.id,
+          title: race.title,
+          date: race.date ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(race.date) : null,
+        }))} />
       </main>
     );
   }
@@ -67,6 +77,7 @@ export default async function PlanPage() {
       doneIds={done.map((d) => d.sessionId)}
       races={races.map(raceHint)}
       zones={zones}
+      currentWeekStart={mondayFor(todayInAmsterdam())}
       aiEnabled={aiEnabled}
     />
   );

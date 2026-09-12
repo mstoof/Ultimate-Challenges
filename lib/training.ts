@@ -37,7 +37,12 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
     // date-kolom komt als "YYYY-MM-DD" binnen; midden op de dag zetten voorkomt
     // dat een tijdzone hem naar de dag ervoor schuift.
     const date = profile.targetRaceDate ? new Date(`${profile.targetRaceDate}T12:00:00`) : null;
-    races.push({ title: profile.targetRace, date, source: "manual" });
+    const dateKey = (value: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(value);
+    const alreadyIncluded = races.some((race) =>
+      race.title === profile.targetRace &&
+      (race.date && date ? dateKey(race.date) === dateKey(date) : race.date === date)
+    );
+    if (!alreadyIncluded) races.push({ title: profile.targetRace, date, source: "manual" });
   }
 
   return races.sort((a, b) => {

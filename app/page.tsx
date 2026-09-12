@@ -114,7 +114,7 @@ export default async function Home() {
   // "abonneer via URL"-deeplink (feed moet wel via https draaien).
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const webcalUrl = `${site.replace(/^https?:\/\//, "webcal://")}/api/calendar.ics`;
-  const googleCalUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl)}`;
+  const googleCalUrl = `https://calendar.google.com/calendar/render?ctz=Europe%2FAmsterdam&cid=${encodeURIComponent(webcalUrl)}`;
 
   return (
     <main className="home">

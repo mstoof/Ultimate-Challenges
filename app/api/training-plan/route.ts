@@ -4,7 +4,9 @@ import { db } from "@/db/client";
 import { trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
 import type { TrainingPlan, TrainingWeek } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { addWeeks, loadTargetRaces, mondayOf, weeksUntil, WEEKS_PER_BLOCK } from "@/lib/training";
+import { addWeeks, computeZones, loadTargetRaces, weeksUntil, WEEKS_PER_BLOCK } from "@/lib/training";
+
+import { allowedDays, mondayFor, plusDays, tomorrowInAmsterdam } from "@/lib/training-dates";
 
 // Bouwt een blok van 10 trainingsweken met Google Gemini, net als de
 // event-import (app/api/import-event). "append" zet er 10 weken bij; "regenerate"
@@ -73,10 +75,17 @@ export async function POST(req: Request) {
   } else {
     const last = blocks[blocks.length - 1];
     blockIndex = last ? last.blockIndex + 1 : 0;
-    startIso = last ? addWeeks(last.startDate, WEEKS_PER_BLOCK) : mondayOf(new Date());
+    startIso = last ? addWeeks(last.startDate, WEEKS_PER_BLOCK) : mondayFor(tomorrowInAmsterdam());
     blockId = crypto.randomUUID();
   }
 
+  const earliestDate = tomorrowInAmsterdam();
+  if (mode === "append") {
+    // A stale previous block must not cause new training sessions in the past.
+    startIso = [startIso, mondayFor(earliestDate)].sort().at(-1)!;
+  } else if (plusDays(startIso, WEEKS_PER_BLOCK * 7 - 1) < earliestDate) {
+    return NextResponse.json({ error: "Dit blok ligt helemaal in het verleden. Bouw een nieuw blok om vanaf morgen verder te trainen." }, { status: 400 });
+  }
   const startWeek = blockIndex * WEEKS_PER_BLOCK + 1;
 
   // Doelraces, met "weken tot de race" gerekend vanaf vandaag.
@@ -103,6 +112,13 @@ export async function POST(req: Request) {
         })
         .join("\n")
     : "- (dit is het eerste blok)";
+
+  const zones = computeZones(profile);
+  const zoneContext = zones
+    ? `Hartslagzones voor hardlopen (${zones.method === "hrr" ? "hartslagreserve / Karvonen" : "% max-hartslag"}; max ${zones.maxHr} bpm${zones.estimatedMax ? ", geschat uit leeftijd" : ""}):\n` +
+      zones.zones.map((z) => `- Z${z.zone} (${z.label}): ${z.low}–${z.high} bpm`).join("\n") +
+      "\nGebruik bij looptrainingen alleen de labels Z1, Z2, Z3, Z4 of Z5 in title en detail. Schrijf geen bpm-waarden of hartslagbereiken in de trainingstekst; die staan in een apart overzicht.\n"
+    : "Geen persoonlijke hartslagzones beschikbaar. Gebruik inspanning/gesprekstempo en verzin geen bpm-grenzen.\n";
 
   const sports = safeJsonArray(profile.sports);
   const longRunDays = safeJsonArray(profile.longRunDays);
@@ -132,6 +148,7 @@ export async function POST(req: Request) {
     `- Dagen voor lange/dubbele trainingen: ${longRunDays.join(", ") || "weekend"}\n` +
     `- Niveau/achtergrond: ${profile.experience || "onbekend"}\n` +
     `- Doel: ${profile.goal || "algemeen fitter en sterker worden"}\n\n` +
+    `${zoneContext}\n` +
     `DOELRACES\n${raceLines}\n\n` +
     `EERDERE BLOKKEN\n${historyLines}\n\n` +
     (adjust ? `BIJSTUREN (verwerk dit): ${adjust}\n\n` : "");
@@ -194,7 +211,14 @@ export async function POST(req: Request) {
     const instruction =
       baseInstruction +
       ` Je maakt nu precies ${count} weken: absolute week ${fromWeek} t/m ${fromWeek + count - 1} van het totale plan. ${phaseNote}`;
-    const context = baseContext + `Maak nu week ${fromWeek} t/m ${fromWeek + count - 1}.`;
+    const calendar = Array.from({ length: count }, (_, index) => {
+      const week = fromWeek + index;
+      const monday = addWeeks(startIso, week - startWeek);
+      return `Week ${week}, maandag ${monday}: toegestane dagen ${allowedDays(monday, earliestDate).join(", ") || "geen (laat sessions leeg)"}.`;
+    }).join("\n");
+    const context = baseContext + `Maak nu week ${fromWeek} t/m ${fromWeek + count - 1}.\n` +
+      `De eerste training mag pas op ${earliestDate} (morgen, Europe/Amsterdam). Plan niets daarvoor. ` +
+      `Een gedeeltelijke week krijgt minder sessies: prop geen volledige trainingsweek in de resterende dagen.\n${calendar}`;
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`,
       {
@@ -283,7 +307,7 @@ export async function POST(req: Request) {
           detail: s.detail ?? "",
           ...(exercises && exercises.length ? { exercises } : {}),
         };
-      }),
+      }).filter((session) => allowedDays(addWeeks(startIso, wi), earliestDate).includes(session.day)),
     };
   });
 

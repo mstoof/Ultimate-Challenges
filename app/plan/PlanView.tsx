@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TrainingBlock, TrainingPlan, TrainingSession } from "@/db/schema";
 import type { ZoneResult } from "@/lib/training";
+import NotionExport from "./NotionExport";
+import { plusDays } from "@/lib/training-dates";
+import { compactRunText } from "@/lib/plan-display";
 import { toggleDone, resetPlan } from "./actions";
 
 type RaceHint = { title: string; date: string | null; weeksAway: number | null };
@@ -35,12 +38,16 @@ export default function PlanView({
   doneIds,
   races,
   aiEnabled,
+  zones,
+  currentWeekStart,
 }: {
   profile: ProfileSummary;
   blocks: TrainingBlock[];
   doneIds: string[];
   races: RaceHint[];
   aiEnabled: boolean;
+  zones: ZoneResult | null;
+  currentWeekStart: string;
 }) {
   const router = useRouter();
   const [done, setDone] = useState<Set<string>>(new Set(doneIds));
@@ -115,6 +122,11 @@ export default function PlanView({
       )}
       {profile.goal && <p className="plan__goal">🎯 {profile.goal}</p>}
 
+      <div className="plan__tools">
+        <HeartRateZones zones={zones} />
+        <NotionExport hasPlan={blocks.length > 0} />
+      </div>
+
       {!aiEnabled && (
         <p className="form__error">
           De AI-coach is niet geconfigureerd (GEMINI_API_KEY ontbreekt), dus er kan nog geen plan gebouwd worden.
@@ -172,12 +184,14 @@ export default function PlanView({
 
               <ol className="plan__weeks">
                 {plan.weeks.map((w) => (
-                  <li key={w.week} className="plan__week">
-                    <div className="plan__week-head">
+                  <CollapsibleWeek key={w.week} isCurrentWeek={w.startDate === currentWeekStart} heading={
+                    <>
                       <span className="plan__week-no">Week {w.week}</span>
-                      <span className="plan__week-date">vanaf {shortDate(w.startDate)}</span>
+                      <span className="plan__week-date">vanaf {shortDate(w.sessions.length ? w.sessions.map((session) => plusDays(w.startDate, Math.max(0, DAY_ORDER.indexOf(session.day)))).sort()[0] : w.startDate)}</span>
                       {w.theme && <span className="plan__week-theme">{w.theme}</span>}
-                    </div>
+                      <span className="plan__week-progress">{w.sessions.filter((session) => done.has(session.id)).length}/{w.sessions.length} klaar</span>
+                    </>
+                  }>
                     {w.note && <p className="plan__week-note">{w.note}</p>}
                     <ul className="plan__sessions">
                       {[...w.sessions]
@@ -196,12 +210,12 @@ export default function PlanView({
                               </span>
                               <span className="plan__session-body">
                                 <span className="plan__session-title">
-                                  {s.title}
+                                  {s.type === "run" || s.type === "brick" ? compactRunText(s.title) : s.title}
                                   {s.duration && !/^0\s*(min|km)?$/i.test(s.duration.trim()) && (
                                     <span className="plan__session-dur"> · {s.duration}</span>
                                   )}
                                 </span>
-                                {s.detail && <span className="plan__session-detail">{s.detail}</span>}
+                                {s.detail && <span className="plan__session-detail">{s.type === "run" || s.type === "brick" ? compactRunText(s.detail) : s.detail}</span>}
                                 {s.exercises && s.exercises.length > 0 && (
                                   <ol className="plan__ex">
                                     {s.exercises.map((ex, i) => (
@@ -219,7 +233,7 @@ export default function PlanView({
                           );
                         })}
                     </ul>
-                  </li>
+                  </CollapsibleWeek>
                 ))}
               </ol>
             </section>
@@ -240,5 +254,53 @@ export default function PlanView({
         </div>
       )}
     </main>
+  );
+}
+
+function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
+  return (
+    <details className="plan__zones">
+      <summary aria-label="Hartslagzones" title="Hartslagzones"><span aria-hidden="true">♡</span> Zones</summary>
+      {zones ? (
+        <>
+          <p>
+            Max-hartslag: {zones.maxHr} bpm ({zones.estimatedMax ? "geschat uit je leeftijd" : "zelf ingevuld"}).
+            {zones.restHr != null && ` Rusthartslag: ${zones.restHr} bpm.`}
+          </p>
+          <table>
+            <caption>Jouw loopzones in slagen per minuut</caption>
+            <thead><tr><th scope="col">Zone</th><th scope="col">Doel</th><th scope="col">bpm</th></tr></thead>
+            <tbody>
+              {zones.zones.map((z) => (
+                <tr key={z.zone}><th scope="row">Z{z.zone}</th><td>{z.label}</td><td>{z.low}–{z.high}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          <p>
+            {zones.method === "hrr"
+              ? "Berekend met hartslagreserve (Karvonen): rusthartslag + percentage × (max-hartslag − rusthartslag)."
+              : "Berekend als percentage van je max-hartslag."}
+            {" "}Zones gebruiken stappen van 10% tussen 50% en 100%. Dit zijn richtwaarden; je persoonlijke zones kunnen afwijken.
+          </p>
+        </>
+      ) : (
+        <p>Je hebt nog geen leeftijd of max-hartslag ingevuld. Vul die in via de vragenlijst om je zones te berekenen. ‘Opnieuw beginnen’ wist je huidige plan en voortgang.</p>
+      )}
+    </details>
+  );
+}
+
+function CollapsibleWeek({ isCurrentWeek, heading, children }: { isCurrentWeek: boolean; heading: ReactNode; children: ReactNode }) {
+  const [expanded, setExpanded] = useState<boolean | null>(null);
+  return (
+    <li className="plan__week">
+      <details open={expanded ?? isCurrentWeek}>
+        <summary className="plan__week-head" onClick={(event) => {
+          event.preventDefault();
+          setExpanded(!(expanded ?? isCurrentWeek));
+        }}>{heading}</summary>
+        {children}
+      </details>
+    </li>
   );
 }

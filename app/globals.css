@@ -383,3 +383,44 @@ textarea { resize: vertical; }
   .login__error { background: #2a1816; }
   .event__new { background: #16241b; border-color: #2b4a37; }
 }
+
+/* Personal heart-rate reference. */
+.plan__zones { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 13px; }
+.plan__zones summary { cursor: pointer; color: var(--lane); font-weight: 600; }
+.plan__zones summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
+.plan__zones p { color: var(--mute); line-height: 1.5; margin: 10px 0 0; }
+.plan__zones table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.plan__zones caption { text-align: left; margin-bottom: 6px; }
+.plan__zones th, .plan__zones td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.plan__zones td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Questionnaire sections */
+.quiz__section { min-width: 0; margin: 24px 0; padding: 16px 20px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.quiz__section legend { padding: 0 8px; font-size: 18px; font-weight: 700; color: var(--pine); }
+.quiz__hint { margin: 0 0 16px; color: var(--mute); font-size: 13px; line-height: 1.5; }
+.quiz__section select { text-overflow: ellipsis; }
+.quiz__chip:focus-within { outline: 2px solid var(--lane); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .quiz__section { padding: 12px 14px 4px; }
+}
+
+/* Compact plan tools and collapsible weeks. */
+.plan__tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 16px 0; }
+.plan__tools > details { flex: 0 1 calc((100% - 16px) / 3); min-width: 0; margin: 0; padding: 0; }
+.plan__tools > details > summary { padding: 9px 8px; min-height: 36px; font-size: 12px; white-space: nowrap; }
+.plan__tools > details[open] { padding: 0 12px 12px; }
+.plan__tools > details[open] > summary { margin: 0 -12px; }
+.plan__tools > details[open] { flex-basis: 100%; }
+.plan__notion { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 13px; }
+.plan__notion summary { cursor: pointer; color: var(--lane); font-weight: 600; }
+.plan__notion summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
+.plan__tool-icon { display: inline-block; padding: 0 3px; border: 1px solid currentColor; border-radius: 2px; font-weight: 800; line-height: 1.2; }
+.plan__notion-body p { line-height: 1.5; }
+.plan__notion-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.plan__notion .btn { display: inline-flex; flex: 0 0 auto; padding: 10px 14px; }
+.plan__week summary { cursor: pointer; margin: 0; list-style: none; }
+.plan__week summary::-webkit-details-marker { display: none; }
+.plan__week summary::before { content: "▸"; color: var(--mute); }
+.plan__week details[open] > summary::before { content: "▾"; }
+.plan__week summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
+.plan__week-progress { font-size: 12px; color: var(--mute); white-space: nowrap; }
