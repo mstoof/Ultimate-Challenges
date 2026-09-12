@@ -13,6 +13,7 @@ export type TargetRace = {
   role?: "run" | "support";
   imageUrl?: string | null;
   signupUrl?: string | null;
+  updatedAt?: Date | null;
 };
 
 /**
@@ -23,7 +24,7 @@ export type TargetRace = {
 export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
   const now = new Date();
   const signedUp = await db
-    .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl, role: rsvps.role })
+    .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl, updatedAt: events.updatedAt, role: rsvps.role })
     .from(rsvps)
     .innerJoin(events, eq(events.id, rsvps.eventId))
     .where(and(eq(rsvps.userId, userId), inArray(rsvps.role, ["run", "support"]), gt(events.startsAt, now)))
@@ -35,6 +36,7 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
     source: "rsvp" as const,
     imageUrl: r.imageUrl,
     signupUrl: r.signupUrl,
+    updatedAt: r.updatedAt,
     role: r.role === "support" ? "support" : "run",
   }));
 
@@ -52,7 +54,29 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
       race.title === profile.targetRace &&
       (race.date && date ? dateKey(race.date) === dateKey(date) : race.date === date)
     );
-    if (!alreadyIncluded) races.push({ title: profile.targetRace, date, source: "manual", role: "run" });
+    if (!alreadyIncluded) {
+      const matchingEvents = await db
+        .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl, updatedAt: events.updatedAt })
+        .from(events);
+      const normalizeTitle = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const targetTitle = normalizeTitle(profile.targetRace);
+      const matchingEvent = matchingEvents
+        .filter((event) => event.date && date ? dateKey(event.date) === dateKey(date) : event.date === date)
+        .sort((a, b) => {
+          const aExact = normalizeTitle(a.title) === targetTitle ? 1 : 0;
+          const bExact = normalizeTitle(b.title) === targetTitle ? 1 : 0;
+          return bExact - aExact;
+        })[0];
+      races.push({
+        title: profile.targetRace,
+        date,
+        source: "manual",
+        role: "run",
+        imageUrl: matchingEvent?.imageUrl ?? null,
+        signupUrl: matchingEvent?.signupUrl ?? null,
+        updatedAt: matchingEvent?.updatedAt ?? null,
+      });
+    }
   }
 
   return races.sort((a, b) => {

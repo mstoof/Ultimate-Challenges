@@ -135,7 +135,8 @@ export default async function EventPage({ params, searchParams }: Props) {
 
       <div className="event__head">
         <Logo
-          src={logoSrc(event.imageUrl, event.signupUrl)}
+          src={logoSrc(event.imageUrl, null)}
+          fallbackSrc={logoSrc(null, event.signupUrl)}
           emoji={sportEmoji(event.sport)}
           className="event__logo"
         />

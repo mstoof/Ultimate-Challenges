@@ -100,6 +100,7 @@ export const trainingProfiles = pgTable("training_profiles", {
   gymDays: integer("gym_days").notNull().default(0), // 0 = geen kracht/gym
   gymSplits: text("gym_splits").notNull().default("[]"), // JSON: push, pull, legs, upper, lower, full, core
   experience: text("experience"), // vrij veld: huidig niveau / km per week
+  recoveryMethods: text("recovery_methods").notNull().default("[]"), // JSON: sauna, ijsbad, mobiliteit, etc.
   goal: text("goal"), // "wat wil je kunnen worden / doen"
   // Voor de hartslagzones (zones 1–5). age → schatting max-HR als maxHr leeg is;
   // restHr maakt de Karvonen-berekening (hartslagreserve) mogelijk.

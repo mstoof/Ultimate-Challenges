@@ -72,7 +72,7 @@ export default async function Home() {
     return (
       <li key={event.id}>
         <Link href={`/e/${event.slug}`} className="home__row">
-          <Logo src={logoSrc(event.imageUrl, event.signupUrl)} emoji={sportEmoji(event.sport)} />
+          <Logo src={logoSrc(event.imageUrl, null)} fallbackSrc={logoSrc(null, event.signupUrl)} emoji={sportEmoji(event.sport)} />
           <span className="home__rail">
             {d ? (
               <>

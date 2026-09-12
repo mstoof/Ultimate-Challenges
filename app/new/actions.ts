@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { events, rsvps } from "@/db/schema";
 import { parseAmsterdam } from "@/lib/timezone";
 import { auth } from "@/lib/auth";
+import { logoSrc } from "@/lib/logo";
 
 function slugify(value: string) {
   return value
@@ -50,6 +51,8 @@ export async function createEvent(formData: FormData) {
   }
 
   const slug = await uniqueSlug(slugify(title));
+  const signupUrl = String(formData.get("signupUrl") ?? "").trim() || null;
+  const imageInput = String(formData.get("imageUrl") ?? "").trim() || null;
 
   const [created] = await db
     .insert(events)
@@ -62,9 +65,9 @@ export async function createEvent(formData: FormData) {
       startsAt,
       endsAt,
       description: String(formData.get("description") ?? "").trim() || null,
-      signupUrl: String(formData.get("signupUrl") ?? "").trim() || null,
+      signupUrl,
       price: String(formData.get("price") ?? "").trim() || null,
-      imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
+      imageUrl: imageInput || logoSrc(null, signupUrl),
       createdBy: session.user.id,
     })
     .returning();

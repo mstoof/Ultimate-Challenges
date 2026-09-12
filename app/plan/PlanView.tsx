@@ -20,6 +20,7 @@ type RaceHint = {
   imageUrl?: string | null;
   signupUrl?: string | null;
   role?: "run" | "support";
+  updatedAt?: string | null;
 };
 type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; gymSplits: string[]; sessionsPerWeek: number };
 
@@ -54,6 +55,42 @@ function weekRange(iso: string) {
 }
 function dateKey(value: string) {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(new Date(value));
+}
+function cleanWeekNote(note: string) {
+  return note.replace(/^week\s+\d+\s*:\s*/i, "");
+}
+function cleanWeekTheme(theme: string, week: number) {
+  const cleaned = theme
+    .replace(/^week\s+\d+\s*[:\-]\s*/i, "")
+    .replace(/\s+week\s+\d+\s*$/i, "")
+    .trim();
+  if (!/^(basis opbouwen|opbouw)$/i.test(cleaned)) return cleaned;
+  const variants = [
+    "Aerobe basis en techniek",
+    "Duurvermogen en ritme",
+    "Kracht en stabiliteit",
+    "Tempo en efficiëntie",
+    "Belasting opbouwen",
+    "Herstel en consolidatie",
+    "Krachtuithoudingsvermogen",
+    "Piek in volume",
+    "Lichte deload",
+    "Racevoorbereiding",
+  ];
+  return variants[(week - 1) % variants.length];
+}
+function blockFocus(plan: TrainingPlan) {
+  const focus = (plan.focus || "").trim();
+  if (focus && !/algemeen fitter|algemene fitheid|focus op hardlopen|hardlopen en ppl kracht/i.test(focus)) return focus;
+  const first = plan.weeks[0];
+  const last = plan.weeks.at(-1);
+  if (!first || !last) return focus || "Trainingsblok";
+  const start = cleanWeekTheme(first.theme, first.week);
+  const end = cleanWeekTheme(last.theme, last.week);
+  return start && end && start !== end ? `${start} → ${end}` : start || end || "Trainingsblok";
+}
+function dayLabelForDate(iso: string) {
+  return ["zo", "ma", "di", "wo", "do", "vr", "za"][new Date(`${iso}T12:00:00Z`).getUTCDay()];
 }
 // Weekdagen op volgorde ma→zo binnen een week.
 const DAY_ORDER = ["ma", "di", "wo", "do", "vr", "za", "zo"];
@@ -196,7 +233,7 @@ export default function PlanView({
           return (
             <section key={block.id} className="plan__block">
               <div className="plan__block-head">
-                <h2 className="plan__focus">{plan.focus || `Blok ${block.blockIndex + 1}`}</h2>
+                <h2 className="plan__focus">{blockFocus(plan)}</h2>
                 <button
                   type="button"
                   className="plan__regen"
@@ -247,17 +284,18 @@ export default function PlanView({
                           <RaceLogo race={race} />
                         </span>
                       ))}
-                      {w.theme && <span className="plan__week-theme">{w.theme}</span>}
+                      {w.theme && <span className="plan__week-theme">{cleanWeekTheme(w.theme, w.week)}</span>}
                       <span className="plan__week-progress">{w.sessions.filter((session) => done.has(session.id)).length}/{w.sessions.length} klaar</span>
                     </>
                   }>
-                    {w.note && <p className="plan__week-note">{w.note}</p>}
+                    {w.note && <p className="plan__week-note">{cleanWeekNote(w.note)}</p>}
                     <ul className="plan__sessions">
                       {[...w.sessions]
                         .sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day))
                         .map((s) => {
                           const isDone = done.has(s.id);
                           const meta = TYPE_META[s.type] ?? TYPE_META.run;
+                          const raceForDay = races.find((race) => race.role !== "support" && race.date && dateKey(race.date) === plusDays(w.startDate, DAY_ORDER.indexOf(s.day)));
                           return (
                             <li key={s.id} className={`plan__session${isDone ? " plan__session--done" : ""}`}>
                               <label className="plan__check">
@@ -265,7 +303,7 @@ export default function PlanView({
                               </label>
                               <span className="plan__day">{DAY_LABEL[s.day] ?? s.day}</span>
                               <span className={`plan__type plan__type--${s.type}`} title={meta.label}>
-                                <TrainingIcon name={meta.icon} />
+                                {raceForDay ? <RaceLogo race={raceForDay} /> : <TrainingIcon name={meta.icon} />}
                               </span>
                               <span className="plan__session-body">
                                 <span className="plan__session-title">
@@ -275,7 +313,7 @@ export default function PlanView({
                                   )}
                                 </span>
                                 {s.detail && <span className="plan__session-detail">{s.type === "run" || s.type === "brick" ? compactRunText(s.detail) : s.detail}</span>}
-                                {s.exercises && s.exercises.length > 0 && (
+                                {s.type === "gym" && s.exercises && s.exercises.length > 0 && (
                                   <ol className="plan__ex">
                                     {s.exercises.map((ex, i) => (
                                       <li key={i} className="plan__ex-item">
@@ -291,6 +329,23 @@ export default function PlanView({
                             </li>
                           );
                         })}
+                      {races.filter((race) => race.role === "support" && race.date && dateKey(race.date) >= w.startDate && dateKey(race.date) <= plusDays(w.startDate, 6)).map((race) => (
+                        <li className={`plan__session plan__event-session${done.has(supportSessionId(race)) ? " plan__session--done" : ""}`} key={`support-event-${w.week}-${race.title}`}>
+                          <label className="plan__check">
+                            <input
+                              type="checkbox"
+                              checked={done.has(supportSessionId(race))}
+                              onChange={() => toggle(supportSessionId(race))}
+                            />
+                          </label>
+                          <span className="plan__day">{dayLabelForDate(dateKey(race.date!))}</span>
+                          <RaceLogo race={race} />
+                          <span className="plan__session-body">
+                            <span className="plan__session-title">Support: {race.title}</span>
+                            <span className="plan__session-detail">Extra activiteit op deze dag.</span>
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </CollapsibleWeek>
                 ))}
@@ -397,7 +452,16 @@ function ActionIcon({ name }: { name: "reset" | "regen" }) {
 }
 
 function RaceLogo({ race }: { race: RaceHint }) {
-  return <Logo src={logoSrc(race.imageUrl ?? null, race.signupUrl ?? null)} emoji="🏁" className="plan__race-logo" />;
+  const source = logoSrc(race.imageUrl ?? null, race.signupUrl ?? null);
+  const fallback = logoSrc(null, race.signupUrl ?? null);
+  const versionedSource = source && race.updatedAt
+    ? `${source}${source.includes("?") ? "&" : "?"}v=${encodeURIComponent(race.updatedAt)}`
+    : source;
+  return <Logo key={versionedSource ?? "event-fallback"} src={versionedSource} fallbackSrc={fallback} emoji="🏁" className="plan__race-logo" />;
+}
+
+function supportSessionId(race: RaceHint) {
+  return `support:${race.title}:${race.date ?? "undated"}`;
 }
 
 function CollapsibleBlock({ isCurrent, label, children }: { isCurrent: boolean; label: string; children: ReactNode }) {

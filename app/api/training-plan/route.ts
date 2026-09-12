@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
 import type { TrainingPlan, TrainingWeek } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { addWeeks, computeZones, loadTargetRaces, weeksUntil, WEEKS_PER_BLOCK } from "@/lib/training";
+import { addWeeks, computeZones, loadTargetRaces, weeksUntil, WEEKDAYS, WEEKS_PER_BLOCK } from "@/lib/training";
 
 import { gymInstructions, readGymSplits } from "@/lib/gym-splits";
 import { allowedDays, mondayFor, plusDays, tomorrowInAmsterdam } from "@/lib/training-dates";
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     ? races
         .map((r) =>
           r.date
-            ? `- ${r.title} op ${amsterdamDateKey(r.date)}${r.role === "support" ? " (support, geen doelrace)" : ""} (over ~${weeksUntil(r.date)} weken)`
+            ? `- ${r.title} op ${amsterdamDateKey(r.date)} (${weekdayForDate(amsterdamDateKey(r.date))})${r.role === "support" ? " (support, geen doelrace)" : ""} (over ~${weeksUntil(r.date)} weken)`
             : `- ${r.title} (nog geen datum)`
         )
         .join("\n")
@@ -126,6 +126,7 @@ export async function POST(req: Request) {
 
   const sports = safeJsonArray(profile.sports);
   const longRunDays = safeJsonArray(profile.longRunDays);
+  const recoveryMethods = safeJsonArray(profile.recoveryMethods);
 
   const gymRule = gymInstructions(profile.gymDays, readGymSplits(profile.gymSplits));
 
@@ -134,9 +135,13 @@ export async function POST(req: Request) {
     `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
     `Verdeel per week het aantal sessies dat de sporter aankan; leg lange/dubbele trainingen op de dagen waarop hij tijd heeft. ` +
     `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
-    `Events met "support, geen doelrace" zijn alleen agenda-markeringen: plan daarvoor geen taper of wedstrijdtraining. ` +
+    `Gebruik de gekozen herstelmethoden als concrete, haalbare hersteladviezen in weeknotities of sessiedetails; plan ze niet allemaal elke week en presenteer ze als optionele ondersteuning. ` +
+    `Events met "support, geen doelrace" zijn extra agenda-activiteiten: plan die dag gewoon de normale training; maak er geen vervangende support-training, taper of herstelweek van. ` +
+    `Zet iedere doelrace op de exacte Amsterdamse kalenderdatum en weekdag die hieronder staat; verplaats hem niet naar een andere dag. ` +
     gymRule +
     `Gebruik "type": "run" (hardlopen), "gym" (kracht), "cross" (aanvullend zoals fietsen/zwemmen), "brick" (combitraining) of "rust". ` +
+    `Geef elke week een korte, onderscheidende theme van 2–6 woorden die de trainingsfase samenvat; herhaal geen generieke titels en zet geen weeknummer in theme of note. ` +
+    `Geef focus een concrete samenvatting van dit specifieke blok van ${WEEKS_PER_BLOCK} weken, bijvoorbeeld "Basis en techniek → racevoorbereiding"; gebruik geen algemene tekst zoals "algemeen fitter worden". ` +
     `"day" is een van: ma, di, wo, do, vr, za, zo. "duration" kort, bv. "45 min" of "12 km". ` +
     `"detail" beschrijft de uitvoering (tempo, hartslagzone, sets×reps). Houd het motiverend maar realistisch.`;
 
@@ -148,6 +153,7 @@ export async function POST(req: Request) {
     `- Dagen voor lange/dubbele trainingen: ${longRunDays.join(", ") || "weekend"}\n` +
     `- Niveau/achtergrond: ${profile.experience || "onbekend"}\n` +
     `- Doel: ${profile.goal || "algemeen fitter en sterker worden"}\n\n` +
+    `- Gewenste herstelmethoden: ${recoveryMethods.join(", ") || "geen specifieke voorkeur"}\n\n` +
     `${zoneContext}\n` +
     `DOELRACES\n${raceLines}\n\n` +
     `EERDERE BLOKKEN\n${historyLines}\n\n` +
@@ -284,8 +290,8 @@ export async function POST(req: Request) {
     return {
       week,
       startDate: addWeeks(startIso, wi),
-      theme: w.theme ?? "",
-      note: w.note ?? "",
+      theme: cleanWeekTheme(w.theme ?? "", week),
+      note: cleanWeekNote(w.note ?? ""),
       sessions: (w.sessions ?? []).map((s, si) => {
         const type = (["run", "gym", "cross", "brick", "rust"].includes(s.type)
           ? s.type
@@ -310,6 +316,70 @@ export async function POST(req: Request) {
       }).filter((session) => allowedDays(addWeeks(startIso, wi), earliestDate).includes(session.day)),
     };
   });
+
+  // De AI kan een race nog steeds op de verkeerde dag zetten, vergeten of een
+  // support-event als training invullen. Races zijn agenda-feiten, dus
+  // corrigeer ze deterministisch op basis van de Amsterdamse datum.
+  for (const race of races) {
+    if (race.role !== "support") continue;
+    const raceDate = race.date ? amsterdamDateKey(race.date) : null;
+    if (!raceDate) continue;
+    const week = weeks.find((candidate) => raceDate >= candidate.startDate && raceDate <= plusDays(candidate.startDate, 6));
+    if (!week) continue;
+    const tokens = race.title.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
+    week.sessions = week.sessions.filter((session) => {
+      const text = `${session.title} ${session.detail}`.toLowerCase();
+      return !tokens.some((token) => text.includes(token)) && !/support/.test(text);
+    });
+    if (!week.sessions.some((session) => session.day === weekdayForDate(raceDate))) {
+      week.sessions.push({
+        id: `${blockId}:${week.week}:support-${race.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        day: weekdayForDate(raceDate),
+        type: "cross",
+        title: "Lichte vrije training",
+        duration: "30 min",
+        detail: "Normale trainingsdag: kies een lichte training of neem rust als je lichaam dat nodig heeft.",
+      });
+    }
+    const supportTokens = race.title.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
+    for (const candidate of weeks) {
+      const text = `${candidate.theme} ${candidate.note}`.toLowerCase();
+      if (supportTokens.some((token) => text.includes(token)) || /support/.test(text)) {
+        candidate.theme = candidate.theme
+          .replace(new RegExp(`(?:herstel na )?(?:race )?(?:en )?${supportTokens.join("|")}`, "ig"), "")
+          .replace(/\s+(en|&)\s*$/i, "")
+          .trim();
+        if (!candidate.theme) candidate.theme = "Opbouw en herstel";
+      }
+    }
+  }
+
+  for (const race of races) {
+    if (race.role === "support" || !race.date) continue;
+    const raceDate = amsterdamDateKey(race.date);
+    const week = weeks.find((candidate) => raceDate >= candidate.startDate && raceDate <= plusDays(candidate.startDate, 6));
+    if (!week) continue;
+    const raceDay = weekdayForDate(raceDate);
+    // Het doelrace-label hoort bij dezelfde kalenderweek als de race, niet bij
+    // de week die de AI toevallig in de thematekst noemt.
+    for (const candidate of weeks) {
+      if (candidate !== week && /doelrace|race week|racedag/i.test(candidate.theme)) {
+        candidate.theme = "";
+      }
+    }
+    week.theme = `Doelrace week: ${race.title}`;
+    // Een echte racedag is leidend: haal andere zware sessies van die dag weg
+    // zodat er geen lange duurloop + gym + race tegelijk wordt gepland.
+    week.sessions = week.sessions.filter((session) => session.day !== raceDay);
+    week.sessions.push({
+      id: `${blockId}:${week.week}:race-${race.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      day: raceDay,
+      type: "run",
+      title: `${race.title} — race`,
+      duration: "",
+      detail: "Racedag. Stem je inspanning af op het evenement en geniet ervan.",
+    });
+  }
 
   if (weeks.length === 0) {
     return NextResponse.json({ error: "De AI leverde geen weken op. Probeer opnieuw." }, { status: 502 });
@@ -341,6 +411,36 @@ export async function POST(req: Request) {
 
 function amsterdamDateKey(date: Date): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(date);
+}
+
+function cleanWeekNote(note: string): string {
+  return note.replace(/^week\s+\d+\s*:\s*/i, "");
+}
+
+function cleanWeekTheme(theme: string, week: number): string {
+  const cleaned = theme
+    .replace(/^week\s+\d+\s*[:\-]\s*/i, "")
+    .replace(/\s+week\s+\d+\s*$/i, "")
+    .trim();
+  if (!/^(basis opbouwen|opbouw)$/i.test(cleaned)) return cleaned;
+  const variants = [
+    "Aerobe basis en techniek",
+    "Duurvermogen en ritme",
+    "Kracht en stabiliteit",
+    "Tempo en efficiëntie",
+    "Belasting opbouwen",
+    "Herstel en consolidatie",
+    "Krachtuithoudingsvermogen",
+    "Piek in volume",
+    "Lichte deload",
+    "Racevoorbereiding",
+  ];
+  return variants[(week - 1) % variants.length];
+}
+
+function weekdayForDate(iso: string): (typeof WEEKDAYS)[number] {
+  const day = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return WEEKDAYS[(day + 6) % 7];
 }
 
 function safeJsonArray(value: string): string[] {

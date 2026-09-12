@@ -25,6 +25,7 @@ export async function saveProfile(formData: FormData) {
   const sessionsPerWeek = clampInt(formData.get("sessionsPerWeek"), 1, 14, 4);
   const gymDays = clampInt(formData.get("gymDays"), 0, 7, 0);
   const experience = String(formData.get("experience") ?? "").trim() || null;
+  const recoveryMethods = formData.getAll("recoveryMethods").map(String).filter(Boolean);
   const goal = String(formData.get("goal") ?? "").trim() || null;
   // Voor de hartslagzones. Leeg of onzinnig → null (dan valt de berekening terug
   // op een schatting uit leeftijd, of laat de zones weg).
@@ -43,6 +44,7 @@ export async function saveProfile(formData: FormData) {
     gymDays,
     gymSplits: JSON.stringify(gymDays > 0 ? normalizeGymSplits(formData.getAll("gymSplits")) : []),
     experience,
+    recoveryMethods: JSON.stringify(recoveryMethods),
     goal,
     age,
     maxHr,

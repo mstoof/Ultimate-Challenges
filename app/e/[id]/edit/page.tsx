@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { events } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { amsterdamInput, parseAmsterdam } from "@/lib/timezone";
+import { logoSrc } from "@/lib/logo";
 import DeleteButton from "./DeleteButton";
 import SportDistance from "./SportDistance";
 
@@ -45,6 +46,9 @@ export default async function EditEventPage({ params, searchParams }: Props) {
     const startsAtRaw = String(formData.get("startsAt") ?? "");
     if (!title || !location || (!someday && !startsAtRaw)) redirect(`/e/${slug}/edit?error=leeg`);
 
+    const signupUrl = String(formData.get("signupUrl") ?? "").trim() || null;
+    const imageInput = String(formData.get("imageUrl") ?? "").trim() || null;
+
     let startsAt: Date | null = null;
     let endsAt: Date | null = null;
     if (!someday) {
@@ -64,9 +68,9 @@ export default async function EditEventPage({ params, searchParams }: Props) {
         startsAt,
         endsAt,
         description: String(formData.get("description") ?? "").trim() || null,
-        signupUrl: String(formData.get("signupUrl") ?? "").trim() || null,
+        signupUrl,
         price: String(formData.get("price") ?? "").trim() || null,
-        imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
+        imageUrl: imageInput || logoSrc(null, signupUrl),
         // Bumpt de SEQUENCE in de ICS, zodat agenda-apps de wijziging oppikken.
         updatedAt: new Date(),
       })

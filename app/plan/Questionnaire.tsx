@@ -18,6 +18,17 @@ const DAYS: { key: string; label: string }[] = [
 // Naast de wedstrijdsporten kun je kracht/gym als losse "sport" kiezen; die
 // staat niet in de event-lijst (SPORTS) maar hoort hier wel thuis.
 const SPORT_OPTIONS = [...SPORTS.filter((s) => s !== "Anders"), "Kracht / Gym", "Anders"];
+const RECOVERY_OPTIONS = [
+  "Sauna",
+  "IJsbad",
+  "Koude douche",
+  "Mobiliteit en stretching",
+  "Foamrollen",
+  "Massage",
+  "Wandelen",
+  "Ademhaling en meditatie",
+  "Extra slaap en rust",
+];
 
 type RaceHint = { title: string; date: string | null; weeksAway: number | null };
 
@@ -28,9 +39,12 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
   const [raceChoice, setRaceChoice] = useState("");
   const selectedRace = raceOptions.find((race) => race.id === raceChoice);
   const [sports, setSports] = useState<string[]>(["Hardlopen"]);
+  const [recoveryMethods, setRecoveryMethods] = useState<string[]>([]);
 
   const toggleSport = (s: string) =>
     setSports((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  const toggleRecovery = (method: string) =>
+    setRecoveryMethods((prev) => (prev.includes(method) ? prev.filter((x) => x !== method) : [...prev, method]));
 
   return (
     <>
@@ -153,7 +167,24 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
         </fieldset>
 
         <fieldset className="quiz__section">
-          <legend>4. Jouw hartslagzones</legend>
+          <legend>4. Herstel</legend>
+          <p className="quiz__hint">Kies wat bij je past. De coach gebruikt deze opties als suggesties rondom zware trainingen en herstelweken.</p>
+          <label>Welke herstelmethoden wil je gebruiken?</label>
+          <div className="quiz__chips">
+            {RECOVERY_OPTIONS.map((method) => {
+              const on = recoveryMethods.includes(method);
+              return (
+                <label key={method} className={`quiz__chip${on ? " quiz__chip--on" : ""}`}>
+                  <input type="checkbox" name="recoveryMethods" value={method} checked={on} onChange={() => toggleRecovery(method)} />
+                  {method}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <fieldset className="quiz__section">
+          <legend>5. Jouw hartslagzones</legend>
           <p className="quiz__hint">
             Hiermee rekenen we je zones 1–5 uit. Max-hartslag mag leeg — dan schatten we die uit je
             leeftijd. Rusthartslag maakt de berekening nauwkeuriger.

@@ -85,7 +85,7 @@ export default async function PlanPage() {
   );
 }
 
-function raceHint(r: { title: string; date: Date | null; imageUrl?: string | null; signupUrl?: string | null; role?: "run" | "support" }) {
+function raceHint(r: { title: string; date: Date | null; imageUrl?: string | null; signupUrl?: string | null; role?: "run" | "support"; updatedAt?: Date | null }) {
   return {
     title: r.title,
     date: r.date ? r.date.toISOString() : null,
@@ -93,6 +93,7 @@ function raceHint(r: { title: string; date: Date | null; imageUrl?: string | nul
     imageUrl: r.imageUrl ?? null,
     signupUrl: r.signupUrl ?? null,
     role: r.role,
+    updatedAt: r.updatedAt?.toISOString() ?? null,
   };
 }
 
