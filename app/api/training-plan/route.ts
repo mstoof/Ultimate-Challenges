@@ -30,6 +30,9 @@ export async function POST(req: Request) {
       { status: 503 }
     );
   }
+  // Flash-Lite is optimized for low-latency structured responses. Override with
+  // GEMINI_MODEL when a project prefers a larger model over response time.
+  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 
   let mode: "append" | "regenerate" = "append";
   let wantIndex: number | undefined;
@@ -216,7 +219,7 @@ export async function POST(req: Request) {
       `De eerste training mag pas op ${earliestDate} (morgen, Europe/Amsterdam). Plan niets daarvoor. ` +
       `Een gedeeltelijke week krijgt minder sessies: prop geen volledige trainingsweek in de resterende dagen.\n${calendar}`;
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
