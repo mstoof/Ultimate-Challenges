@@ -19,6 +19,7 @@ type RaceHint = {
   weeksAway: number | null;
   imageUrl?: string | null;
   signupUrl?: string | null;
+  role?: "run" | "support";
 };
 type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; gymSplits: string[]; sessionsPerWeek: number };
 
@@ -97,7 +98,7 @@ export default function PlanView({
     return () => toolbar.removeEventListener("click", closeSiblings);
   }, []);
 
-  const target = races.find((r) => r.date) ?? races[0] ?? null;
+  const target = races.find((r) => r.date && r.role !== "support") ?? null;
 
   function toggle(id: string) {
     setDone((prev) => {
@@ -242,7 +243,7 @@ export default function PlanView({
                       <span className="plan__week-no">WK{calendarWeek(w.startDate)}</span>
                       <span className="plan__week-date">{weekRange(w.startDate)}</span>
                       {races.filter((race) => race.date && dateKey(race.date) >= w.startDate && dateKey(race.date) <= plusDays(w.startDate, 6)).map((race) => (
-                        <span className="plan__week-race" key={`${w.week}-${race.title}`} title={race.title}>
+                        <span className="plan__week-race" key={`${w.week}-${race.title}`} title={race.title} aria-label={race.title}>
                           <RaceLogo race={race} />
                         </span>
                       ))}

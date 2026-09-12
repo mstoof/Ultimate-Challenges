@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     ? races
         .map((r) =>
           r.date
-            ? `- ${r.title} op ${r.date.toISOString().slice(0, 10)} (over ~${weeksUntil(r.date)} weken)`
+            ? `- ${r.title} op ${amsterdamDateKey(r.date)}${r.role === "support" ? " (support, geen doelrace)" : ""} (over ~${weeksUntil(r.date)} weken)`
             : `- ${r.title} (nog geen datum)`
         )
         .join("\n")
@@ -134,6 +134,7 @@ export async function POST(req: Request) {
     `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
     `Verdeel per week het aantal sessies dat de sporter aankan; leg lange/dubbele trainingen op de dagen waarop hij tijd heeft. ` +
     `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
+    `Events met "support, geen doelrace" zijn alleen agenda-markeringen: plan daarvoor geen taper of wedstrijdtraining. ` +
     gymRule +
     `Gebruik "type": "run" (hardlopen), "gym" (kracht), "cross" (aanvullend zoals fietsen/zwemmen), "brick" (combitraining) of "rust". ` +
     `"day" is een van: ma, di, wo, do, vr, za, zo. "duration" kort, bv. "45 min" of "12 km". ` +
@@ -336,6 +337,10 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, blockIndex });
+}
+
+function amsterdamDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(date);
 }
 
 function safeJsonArray(value: string): string[] {

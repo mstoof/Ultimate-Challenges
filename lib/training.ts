@@ -1,4 +1,4 @@
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { events, rsvps, trainingProfiles } from "@/db/schema";
 
@@ -10,6 +10,7 @@ export type TargetRace = {
   title: string;
   date: Date | null;
   source: "rsvp" | "manual";
+  role?: "run" | "support";
   imageUrl?: string | null;
   signupUrl?: string | null;
 };
@@ -22,10 +23,10 @@ export type TargetRace = {
 export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
   const now = new Date();
   const signedUp = await db
-    .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl })
+    .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl, role: rsvps.role })
     .from(rsvps)
     .innerJoin(events, eq(events.id, rsvps.eventId))
-    .where(and(eq(rsvps.userId, userId), eq(rsvps.role, "run"), gt(events.startsAt, now)))
+    .where(and(eq(rsvps.userId, userId), inArray(rsvps.role, ["run", "support"]), gt(events.startsAt, now)))
     .orderBy(asc(events.startsAt));
 
   const races: TargetRace[] = signedUp.map((r) => ({
@@ -34,6 +35,7 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
     source: "rsvp" as const,
     imageUrl: r.imageUrl,
     signupUrl: r.signupUrl,
+    role: r.role === "support" ? "support" : "run",
   }));
 
   const [profile] = await db
@@ -50,7 +52,7 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
       race.title === profile.targetRace &&
       (race.date && date ? dateKey(race.date) === dateKey(date) : race.date === date)
     );
-    if (!alreadyIncluded) races.push({ title: profile.targetRace, date, source: "manual" });
+    if (!alreadyIncluded) races.push({ title: profile.targetRace, date, source: "manual", role: "run" });
   }
 
   return races.sort((a, b) => {
