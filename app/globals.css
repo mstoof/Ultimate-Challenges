@@ -243,6 +243,9 @@ textarea { resize: vertical; }
 @media (max-width: 480px) {
   .form__two { flex-direction: column; gap: 0; }
   h1 { font-size: 28px; }
+  .home__brand h1 { display: none; }
+  .home__brand { gap: 0; }
+  .home__brand svg { width: 38px; height: 38px; }
 }
 
 .login { max-width: 400px; }
