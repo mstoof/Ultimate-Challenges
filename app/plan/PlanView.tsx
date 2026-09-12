@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TrainingBlock, TrainingPlan, TrainingSession } from "@/db/schema";
@@ -17,12 +17,12 @@ type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; 
 const DAY_LABEL: Record<string, string> = {
   ma: "ma", di: "di", wo: "wo", do: "do", vr: "vr", za: "za", zo: "zo",
 };
-const TYPE_META: Record<TrainingSession["type"], { icon: string; label: string }> = {
-  run: { icon: "🏃", label: "Hardlopen" },
-  gym: { icon: "🏋️", label: "Kracht" },
-  cross: { icon: "🚴", label: "Cross" },
-  brick: { icon: "🧱", label: "Brick" },
-  rust: { icon: "😌", label: "Rust" },
+const TYPE_META: Record<TrainingSession["type"], { icon: TrainingIconName; label: string }> = {
+  run: { icon: "run", label: "Hardlopen" },
+  gym: { icon: "gym", label: "Kracht" },
+  cross: { icon: "cross", label: "Cross" },
+  brick: { icon: "brick", label: "Brick" },
+  rust: { icon: "rest", label: "Rust" },
 };
 
 const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
@@ -57,6 +57,21 @@ export default function PlanView({
   const [error, setError] = useState<string | null>(null);
   const [regenFor, setRegenFor] = useState<number | null>(null);
   const [adjust, setAdjust] = useState("");
+
+  useEffect(() => {
+    const toolbar = document.querySelector(".plan__tools");
+    if (!toolbar) return;
+    const closeSiblings = (event: Event) => {
+      const summary = (event.target as HTMLElement).closest("summary");
+      const current = summary?.closest("details");
+      if (!current) return;
+      toolbar.querySelectorAll("details[open]").forEach((detail) => {
+        if (detail !== current) detail.removeAttribute("open");
+      });
+    };
+    toolbar.addEventListener("click", closeSiblings);
+    return () => toolbar.removeEventListener("click", closeSiblings);
+  }, []);
 
   const target = races.find((r) => r.date) ?? races[0] ?? null;
 
@@ -208,7 +223,7 @@ export default function PlanView({
                               </label>
                               <span className="plan__day">{DAY_LABEL[s.day] ?? s.day}</span>
                               <span className={`plan__type plan__type--${s.type}`} title={meta.label}>
-                                {meta.icon}
+                                <TrainingIcon name={meta.icon} />
                               </span>
                               <span className="plan__session-body">
                                 <span className="plan__session-title">
@@ -262,7 +277,7 @@ export default function PlanView({
 function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
   return (
     <details className="plan__zones">
-      <summary aria-label="Hartslagzones" title="Hartslagzones"><span aria-hidden="true">♡</span> Zones</summary>
+      <summary aria-label="Hartslagzones" title="Hartslagzones"><ToolIcon name="heart" /> Zones</summary>
       {zones ? (
         <div className="plan__zones-body">
           <p>
@@ -290,6 +305,26 @@ function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
       )}
     </details>
   );
+}
+
+type TrainingIconName = "run" | "gym" | "cross" | "brick" | "rest";
+function TrainingIcon({ name }: { name: TrainingIconName }) {
+  const paths: Record<TrainingIconName, string> = {
+    run: "M13 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 21l3-7 3 2 2 4h3l-2-6-4-3 1-3 3 2 1-2-4-2-3 2-2 6-3 3 1 1 3-2-2 5H6Z",
+    gym: "M4 9v6M7 7v10M10 10h4v4h-4M17 7v10M20 9v6M7 12h10",
+    cross: "M6 17l4-10 4 10M8 13h7M15 7l3 3-2 2 3 3",
+    brick: "M4 7h16v10H4zM4 12h16M10 7v5M16 12v5",
+    rest: "M6 15a6 6 0 1 0 7-8 5 5 0 1 1-7 8Z",
+  };
+  return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name]} /></svg>;
+}
+
+function ToolIcon({ name }: { name: "heart" | "notion" | "gym" }) {
+  if (name === "notion") return <span className="plan__tool-icon" aria-hidden="true">N</span>;
+  const path = name === "heart"
+    ? "M12 20S4 15.5 4 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.5 12 20 12 20Z"
+    : "M4 9v6M7 7v10M10 10h4v4h-4M17 7v10M20 9v6M7 12h10";
+  return <svg className="plan__tool-svg" viewBox="0 0 24 24" aria-hidden="true"><path d={path} /></svg>;
 }
 
 function CollapsibleWeek({ isCurrentWeek, heading, children }: { isCurrentWeek: boolean; heading: ReactNode; children: ReactNode }) {

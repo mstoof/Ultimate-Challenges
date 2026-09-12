@@ -15,7 +15,11 @@ export default function GymSplitPicker({ initialSplits = [] }: { initialSplits?:
           <label key={split.id} className={`quiz__chip${selected.includes(split.id) ? " quiz__chip--on" : ""}`}>
             <input type="radio" name="gymSplits" value={split.id} checked={selected.includes(split.id)}
               onChange={() => setSelected([split.id])} />
-            <span>{split.label}<small className="quiz__split-focus">{split.focus}</small><small className="quiz__split-focus">{split.days}</small></span>
+            <span className="quiz__split-content">
+              <span className="quiz__split-title">{split.label}</span>
+              <small className="quiz__split-days">{split.days}</small>
+              <small className="quiz__split-focus">{split.focus}</small>
+            </span>
           </label>
         ))}
       </div>

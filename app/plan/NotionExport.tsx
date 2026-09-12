@@ -94,7 +94,7 @@ export default function NotionExport({ hasPlan }: { hasPlan: boolean }) {
 
   return (
     <details className="plan__notion" open={notice ? true : undefined}>
-      <summary aria-label="Notion export" title="Notion export"><span className="plan__tool-icon" aria-hidden="true">N</span> Notion</summary>
+      <summary aria-label="Notion export" title="Notion export"><svg className="plan__tool-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h4l6 9V5h4v14h-4l-6-9v9H5Z" /></svg> Notion</summary>
       <div className="plan__notion-body">
         {error && <p className="form__error" role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}

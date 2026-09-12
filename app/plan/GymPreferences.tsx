@@ -9,7 +9,7 @@ export default function GymPreferences({ gymDays, gymSplits }: { gymDays: number
   const [result, action, pending] = useActionState(saveGymPreferences, null);
   return (
     <details className="plan__gym">
-      <summary aria-label="Gymvoorkeuren" title="Gymvoorkeuren"><span aria-hidden="true">🏋️</span> Gym</summary>
+      <summary aria-label="Gymvoorkeuren" title="Gymvoorkeuren"><svg className="plan__tool-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6M7 7v10M10 10h4v4h-4M17 7v10M20 9v6M7 12h10" /></svg> Gym</summary>
       <form action={action}>
         <p>Richt je krachttraining op één compleet splitsysteem.</p>
         <label htmlFor="plan-gym-days">Krachttraining (dagen/week)</label>
