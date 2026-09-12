@@ -434,11 +434,14 @@ textarea { resize: vertical; }
 .plan__gym p { line-height: 1.5; }
 .plan__gym .btn { display: inline-flex; flex: 0 0 auto; padding: 10px 14px; }
 
-/* Keep all three tools in fixed columns while their details expand below. */
+/* Keep the three controls in one fixed row; an open panel spans underneath it. */
 .plan__tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 8px; }
-.plan__tools > details,
-.plan__tools > details[open] { grid-column: auto; width: auto; flex: none; }
-.plan__tools > details[open] { padding: 0 12px 12px; }
+.plan__tools > details { display: contents; }
+.plan__tools > details > summary { grid-row: 1; display: block; overflow: hidden; text-overflow: ellipsis; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.plan__tools > details:not([open]) > :not(summary) { display: none; }
+.plan__tools > details[open] > .plan__zones-body,
+.plan__tools > details[open] > .plan__notion-body,
+.plan__tools > details[open] > form { grid-column: 1 / -1; grid-row: 2; display: block; min-width: 0; margin-top: 2px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
 @media (max-width: 600px) {
   .plan__tools { gap: 5px; }
   .plan__tools > details > summary { padding-left: 5px; padding-right: 5px; font-size: 11px; }

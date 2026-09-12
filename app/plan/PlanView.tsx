@@ -264,7 +264,7 @@ function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
     <details className="plan__zones">
       <summary aria-label="Hartslagzones" title="Hartslagzones"><span aria-hidden="true">♡</span> Zones</summary>
       {zones ? (
-        <>
+        <div className="plan__zones-body">
           <p>
             Max-hartslag: {zones.maxHr} bpm ({zones.estimatedMax ? "geschat uit je leeftijd" : "zelf ingevuld"}).
             {zones.restHr != null && ` Rusthartslag: ${zones.restHr} bpm.`}
@@ -284,9 +284,9 @@ function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
               : "Berekend als percentage van je max-hartslag."}
             {" "}Zones gebruiken stappen van 10% tussen 50% en 100%. Dit zijn richtwaarden; je persoonlijke zones kunnen afwijken.
           </p>
-        </>
+        </div>
       ) : (
-        <p>Je hebt nog geen leeftijd of max-hartslag ingevuld. Vul die in via de vragenlijst om je zones te berekenen. ‘Opnieuw beginnen’ wist je huidige plan en voortgang.</p>
+        <div className="plan__zones-body"><p>Je hebt nog geen leeftijd of max-hartslag ingevuld. Vul die in via de vragenlijst om je zones te berekenen. ‘Opnieuw beginnen’ wist je huidige plan en voortgang.</p></div>
       )}
     </details>
   );
