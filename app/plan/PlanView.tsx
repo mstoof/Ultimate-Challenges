@@ -7,11 +7,19 @@ import type { TrainingBlock, TrainingPlan, TrainingSession } from "@/db/schema";
 import type { ZoneResult } from "@/lib/training";
 import GymPreferences from "./GymPreferences";
 import NotionExport from "./NotionExport";
+import Logo from "../Logo";
 import { plusDays } from "@/lib/training-dates";
+import { logoSrc } from "@/lib/logo";
 import { compactRunText } from "@/lib/plan-display";
 import { toggleDone, resetPlan } from "./actions";
 
-type RaceHint = { title: string; date: string | null; weeksAway: number | null };
+type RaceHint = {
+  title: string;
+  date: string | null;
+  weeksAway: number | null;
+  imageUrl?: string | null;
+  signupUrl?: string | null;
+};
 type ProfileSummary = { sports: string[]; goal: string | null; gymDays: number; gymSplits: string[]; sessionsPerWeek: number };
 
 const DAY_LABEL: Record<string, string> = {
@@ -26,9 +34,25 @@ const TYPE_META: Record<TrainingSession["type"], { icon: TrainingIconName; label
 };
 
 const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-function shortDate(iso: string) {
-  const d = new Date(`${iso}T12:00:00`);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+function calendarWeek(iso: string) {
+  const date = new Date(`${iso}T12:00:00Z`);
+  const thursday = new Date(date);
+  thursday.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 1));
+  return Math.ceil((((thursday.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+function weekRange(iso: string) {
+  const end = plusDays(iso, 6);
+  const startDate = new Date(`${iso}T12:00:00`);
+  const endDate = new Date(`${end}T12:00:00`);
+  const startMonth = MONTHS[startDate.getMonth()];
+  const endMonth = MONTHS[endDate.getMonth()];
+  return startMonth === endMonth
+    ? `${startDate.getDate()}–${endDate.getDate()} ${endMonth}`
+    : `${startDate.getDate()} ${startMonth}–${endDate.getDate()} ${endMonth}`;
+}
+function dateKey(value: string) {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(new Date(value));
 }
 // Weekdagen op volgorde ma→zo binnen een week.
 const DAY_ORDER = ["ma", "di", "wo", "do", "vr", "za", "zo"];
@@ -118,8 +142,9 @@ export default function PlanView({
           ← Agenda
         </Link>
         <form action={resetPlan}>
-          <button type="submit" className="plan__reset" title="Vragenlijst opnieuw invullen">
-            Opnieuw beginnen
+          <button type="submit" className="plan__reset" title="Vragenlijst opnieuw invullen" aria-label="Vragenlijst opnieuw invullen">
+            <ActionIcon name="reset" />
+            <span className="plan__action-label">Opnieuw beginnen</span>
           </button>
         </form>
       </header>
@@ -166,6 +191,7 @@ export default function PlanView({
       ) : (
         blocks.map((block) => {
           const plan = block.weeks as TrainingPlan;
+          const blockIsCurrent = plan.weeks.some((week) => week.startDate === currentWeekStart);
           return (
             <section key={block.id} className="plan__block">
               <div className="plan__block-head">
@@ -173,10 +199,13 @@ export default function PlanView({
                 <button
                   type="button"
                   className="plan__regen"
+                  title="Dit trainingsblok opnieuw genereren"
+                  aria-label="Dit trainingsblok opnieuw genereren"
                   onClick={() => setRegenFor(regenFor === block.blockIndex ? null : block.blockIndex)}
                   disabled={busy || !aiEnabled}
                 >
-                  Opnieuw genereren
+                  <ActionIcon name="regen" />
+                  <span className="plan__action-label">Opnieuw genereren</span>
                 </button>
               </div>
 
@@ -192,19 +221,31 @@ export default function PlanView({
                     type="button"
                     className="btn btn--solid"
                     disabled={busy}
+                    aria-busy={busy}
                     onClick={() => build("regenerate", block.blockIndex)}
                   >
                     {busy ? "Bezig…" : "Genereer dit blok opnieuw"}
                   </button>
+                  {busy && <p className="plan__regen-status" role="status">De coach maakt twee delen van dit blok. Dit kan even duren.</p>}
+                  {error && <p className="plan__regen-error" role="alert">{error}</p>}
                 </div>
               )}
 
+              <CollapsibleBlock
+                isCurrent={blockIsCurrent}
+                label={`Weken ${plan.weeks[0]?.week ?? block.blockIndex * 10 + 1}–${plan.weeks.at(-1)?.week ?? (block.blockIndex + 1) * 10}`}
+              >
               <ol className="plan__weeks">
                 {plan.weeks.map((w) => (
                   <CollapsibleWeek key={w.week} isCurrentWeek={w.startDate === currentWeekStart} heading={
                     <>
-                      <span className="plan__week-no">Week {w.week}</span>
-                      <span className="plan__week-date">vanaf {shortDate(w.sessions.length ? w.sessions.map((session) => plusDays(w.startDate, Math.max(0, DAY_ORDER.indexOf(session.day)))).sort()[0] : w.startDate)}</span>
+                      <span className="plan__week-no">WK{calendarWeek(w.startDate)}</span>
+                      <span className="plan__week-date">{weekRange(w.startDate)}</span>
+                      {races.filter((race) => race.date && dateKey(race.date) >= w.startDate && dateKey(race.date) <= plusDays(w.startDate, 6)).map((race) => (
+                        <span className="plan__week-race" key={`${w.week}-${race.title}`} title={race.title}>
+                          <RaceLogo race={race} />
+                        </span>
+                      ))}
                       {w.theme && <span className="plan__week-theme">{w.theme}</span>}
                       <span className="plan__week-progress">{w.sessions.filter((session) => done.has(session.id)).length}/{w.sessions.length} klaar</span>
                     </>
@@ -253,6 +294,7 @@ export default function PlanView({
                   </CollapsibleWeek>
                 ))}
               </ol>
+              </CollapsibleBlock>
             </section>
           );
         })
@@ -309,14 +351,33 @@ function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
 
 type TrainingIconName = "run" | "gym" | "cross" | "brick" | "rest";
 function TrainingIcon({ name }: { name: TrainingIconName }) {
-  const paths: Record<TrainingIconName, string> = {
-    run: "M13 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 21l3-7 3 2 2 4h3l-2-6-4-3 1-3 3 2 1-2-4-2-3 2-2 6-3 3 1 1 3-2-2 5H6Z",
-    gym: "M4 9v6M7 7v10M10 10h4v4h-4M17 7v10M20 9v6M7 12h10",
-    cross: "M6 17l4-10 4 10M8 13h7M15 7l3 3-2 2 3 3",
-    brick: "M4 7h16v10H4zM4 12h16M10 7v5M16 12v5",
-    rest: "M6 15a6 6 0 1 0 7-8 5 5 0 1 1-7 8Z",
-  };
-  return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name]} /></svg>;
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (name === "run") {
+    return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true" {...common}>
+      <circle cx="14.5" cy="4" r="2" />
+      <path d="m12.5 8 2.5 2.5 3.5 1M12.5 8l-2 4.5-3.5 2M15 10.5l-1.5 4.5 3.5 4M10.5 12.5l-1 5.5-3 2.5" />
+    </svg>;
+  }
+  if (name === "gym") {
+    return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true" {...common}>
+      <path d="M4 9v6M7 6v12M10 10h4M17 6v12M20 9v6M7 12h10" />
+    </svg>;
+  }
+  if (name === "cross") {
+    return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true" {...common}>
+      <circle cx="7" cy="17" r="2.5" /><circle cx="17" cy="17" r="2.5" />
+      <path d="m7 17 4-7 3 7m-3-7 3-3m-3 3 5 2 1.5 5" />
+    </svg>;
+  }
+  if (name === "brick") {
+    return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true" {...common}>
+      <path d="M4 7h16v10H4zM4 12h16M10 7v5M16 12v5" />
+    </svg>;
+  }
+  return <svg className="plan__training-icon" viewBox="0 0 24 24" aria-hidden="true" {...common}>
+    <path d="M6 15a6 6 0 1 0 7-8 5 5 0 1 1-7 8Z" />
+    <path d="M17.5 4.5h.01M20 7h.01" />
+  </svg>;
 }
 
 function ToolIcon({ name }: { name: "heart" | "notion" | "gym" }) {
@@ -325,6 +386,37 @@ function ToolIcon({ name }: { name: "heart" | "notion" | "gym" }) {
     ? "M12 20S4 15.5 4 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.5 12 20 12 20Z"
     : "M4 9v6M7 7v10M10 10h4v4h-4M17 7v10M20 9v6M7 12h10";
   return <svg className="plan__tool-svg" viewBox="0 0 24 24" aria-hidden="true"><path d={path} /></svg>;
+}
+
+function ActionIcon({ name }: { name: "reset" | "regen" }) {
+  const path = name === "reset"
+    ? "M3 8.5V3m0 5.5h5.5M3.8 8a9 9 0 1 1 2.1 9.8"
+    : "M20 11a8 8 0 0 0-14.9-4L4 9M4 5v4h4M4 13a8 8 0 0 0 14.9 4L20 15M20 19v-4h-4";
+  return <svg className="plan__action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={path} /></svg>;
+}
+
+function RaceLogo({ race }: { race: RaceHint }) {
+  return <Logo src={logoSrc(race.imageUrl ?? null, race.signupUrl ?? null)} emoji="🏁" className="plan__race-logo" />;
+}
+
+function CollapsibleBlock({ isCurrent, label, children }: { isCurrent: boolean; label: string; children: ReactNode }) {
+  const [expanded, setExpanded] = useState<boolean | null>(null);
+  const isOpen = expanded ?? isCurrent;
+  return (
+    <details className="plan__block-details" open={isOpen}>
+      <summary
+        className="plan__block-summary"
+        onClick={(event) => {
+          event.preventDefault();
+          setExpanded(!isOpen);
+        }}
+      >
+        <span>{label}</span>
+        <span className="plan__block-summary-note">{isOpen ? "Inklappen" : "Openklappen"}</span>
+      </summary>
+      {children}
+    </details>
+  );
 }
 
 function CollapsibleWeek({ isCurrentWeek, heading, children }: { isCurrentWeek: boolean; heading: ReactNode; children: ReactNode }) {

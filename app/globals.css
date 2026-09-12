@@ -307,8 +307,12 @@ textarea { resize: vertical; }
 }
 .plan__regen { flex: none; font-size: 13px; color: var(--mute); cursor: pointer; background: none; border: 0; padding: 4px; }
 .plan__regen:disabled { opacity: 0.5; cursor: default; }
-.plan__regen-box { margin: 10px 0 4px; }
+.plan__reset, .plan__regen { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.plan__action-icon { width: 17px; height: 17px; flex: 0 0 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.plan__regen-box { margin: 10px 0 8px; padding: 10px 12px; border-left: 3px solid var(--lane); background: var(--paper); }
 .plan__regen-box .btn { display: inline-flex; flex: 0 0 auto; padding: 10px 18px; }
+.plan__regen-status { display: inline; margin: 0 0 0 10px; color: var(--mute); font-size: 12px; }
+.plan__regen-error { margin: 8px 0 0; color: var(--danger); font-size: 13px; }
 
 .plan__weeks { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .plan__week { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
@@ -382,6 +386,8 @@ textarea { resize: vertical; }
   .form__error,
   .login__error { background: #2a1816; }
   .event__new { background: #16241b; border-color: #2b4a37; }
+  /* Event logos are often dark monochrome assets; make them readable on dark paper. */
+  .plan__race-logo--img img { filter: grayscale(1) brightness(0) invert(1); }
 }
 
 /* Personal heart-rate reference. */
@@ -426,6 +432,55 @@ textarea { resize: vertical; }
 .plan__week details[open] > summary::before { content: "▾"; }
 .plan__week summary:focus-visible { outline: 2px solid var(--lane); outline-offset: 4px; }
 .plan__week-progress { font-size: 12px; color: var(--mute); white-space: nowrap; }
+.plan__block-details { margin-top: 8px; }
+.plan__block-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--lane);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+.plan__block-summary::-webkit-details-marker { display: none; }
+.plan__block-summary::before { content: "▸"; color: var(--mute); }
+.plan__block-details[open] > .plan__block-summary::before { content: "▾"; }
+.plan__block-summary-note { color: var(--mute); font-size: 11px; font-weight: 500; margin-left: auto; }
+.plan__block-details > .plan__weeks { margin-top: 10px; padding-left: 12px; border-left: 1px solid var(--line); }
+.plan__week-race { display: inline-flex; align-items: center; gap: 5px; color: var(--lane); font-size: 11px; font-weight: 600; }
+.plan__race-logo { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 4px; font-size: 13px; }
+.plan__race-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 600px) {
+  .plan__reset, .plan__regen {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 5px;
+  }
+  .plan__reset .plan__action-label,
+  .plan__regen .plan__action-label { display: none; }
+  .plan__block-head { align-items: center; }
+  .plan__focus { min-width: 0; }
+  .plan__week-head {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .plan__week-no,
+  .plan__week-date,
+  .plan__week-progress { flex: 0 0 auto; }
+  .plan__week-theme { display: none; }
+  .plan__week-progress { margin-left: auto; }
+}
 
 .quiz__splits { border: 0; padding: 0; margin: 8px 0 16px; min-width: 0; }
 .quiz__splits legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }

@@ -6,7 +6,13 @@ export const WEEKDAYS = ["ma", "di", "wo", "do", "vr", "za", "zo"] as const;
 export const WEEKS_PER_BLOCK = 10;
 
 /** Een doelrace zoals het plan hem gebruikt: naam + datum (of null voor "ooit"). */
-export type TargetRace = { title: string; date: Date | null; source: "rsvp" | "manual" };
+export type TargetRace = {
+  title: string;
+  date: Date | null;
+  source: "rsvp" | "manual";
+  imageUrl?: string | null;
+  signupUrl?: string | null;
+};
 
 /**
  * De races waar dit lid naartoe traint: alle toekomstige events waarvoor het
@@ -16,7 +22,7 @@ export type TargetRace = { title: string; date: Date | null; source: "rsvp" | "m
 export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
   const now = new Date();
   const signedUp = await db
-    .select({ title: events.title, date: events.startsAt })
+    .select({ title: events.title, date: events.startsAt, imageUrl: events.imageUrl, signupUrl: events.signupUrl })
     .from(rsvps)
     .innerJoin(events, eq(events.id, rsvps.eventId))
     .where(and(eq(rsvps.userId, userId), eq(rsvps.role, "run"), gt(events.startsAt, now)))
@@ -26,6 +32,8 @@ export async function loadTargetRaces(userId: string): Promise<TargetRace[]> {
     title: r.title,
     date: r.date,
     source: "rsvp" as const,
+    imageUrl: r.imageUrl,
+    signupUrl: r.signupUrl,
   }));
 
   const [profile] = await db

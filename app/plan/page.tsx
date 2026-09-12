@@ -85,11 +85,13 @@ export default async function PlanPage() {
   );
 }
 
-function raceHint(r: { title: string; date: Date | null }) {
+function raceHint(r: { title: string; date: Date | null; imageUrl?: string | null; signupUrl?: string | null }) {
   return {
     title: r.title,
     date: r.date ? r.date.toISOString() : null,
     weeksAway: r.date ? weeksUntil(r.date) : null,
+    imageUrl: r.imageUrl ?? null,
+    signupUrl: r.signupUrl ?? null,
   };
 }
 
