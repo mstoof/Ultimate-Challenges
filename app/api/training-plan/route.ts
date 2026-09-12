@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, desc, eq, like } from "drizzle-orm";
+import { and, asc, eq, like } from "drizzle-orm";
 import { db } from "@/db/client";
 import { trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
 import type { TrainingPlan, TrainingWeek } from "@/db/schema";

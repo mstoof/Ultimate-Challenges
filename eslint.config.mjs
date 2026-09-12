@@ -1,6 +1,13 @@
-import next from "eslint-config-next";
+import { FlatCompat } from "@eslint/eslintrc";
+import { fileURLToPath } from "node:url";
 
-export default [
-  ...next(),
-  { ignores: [".next/**", "node_modules/**", "drizzle/**"] },
+const compat = new FlatCompat({
+  baseDirectory: fileURLToPath(new URL(".", import.meta.url)),
+});
+
+const config = [
+  { ignores: [".next/**", "node_modules/**", "drizzle/**", "next-env.d.ts"] },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
+
+export default config;

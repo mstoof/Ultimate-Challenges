@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -50,5 +50,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Feed valideert
-        run: npm run test -- lib/calendar.test.ts
+      - name: Tests
+        run: npm test
