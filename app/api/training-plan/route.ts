@@ -133,8 +133,11 @@ export async function POST(req: Request) {
   const baseInstruction =
     `Je bent een ervaren hardloop- en krachttrainer die een trainingsschema maakt voor één sporter. ` +
     `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
-    `Plan in elke VOLLEDIGE week precies ${profile.sessionsPerWeek} sessies in totaal (looptrainingen, krachtsessies en cross samen; de ${profile.gymDays} krachtsessies tellen hierin mee). ` +
-    `Dubbeltrainingen (twee sessies op één dag) mogen op elke dag; gebruik ze zodra ${profile.sessionsPerWeek} sessies niet meer op losse dagen passen. De opgegeven dagen met meer tijd zijn bedoeld voor de lange of tijdrovende sessies (lange duurloop, brick), niet als enige toegestane dubbeldagen. ` +
+    `Een normale opbouwweek zit rond de ${profile.sessionsPerWeek} sessies in totaal: plan in een VOLLEDIGE week minstens ${Math.max(1, profile.sessionsPerWeek - 2)} en hoogstens ${profile.sessionsPerWeek} sessies. Overschrijd ${profile.sessionsPerWeek} nooit, maar plan ook niet structureel veel minder (dus geen week van 7 of 8 als er ${profile.sessionsPerWeek} gevraagd is) — behalve in een bewuste herstel- of taperweek, die mag lichter zijn. ` +
+    `Plan per volledige week ${profile.gymDays} krachtsessies ("type": "gym"), minimaal ${Math.max(1, profile.gymDays - 1)}. ` +
+    `Kracht en hardlopen zijn samen even belangrijk: plan per volledige week MINSTENS ${Math.max(1, profile.sessionsPerWeek - profile.gymDays - 1)} hardloop-/crosstrainingen (duurloop, tempo, interval, lange duurloop, brick), naast de kracht en 1–2 rustdagen. Laat hardlopen dus NIET wegvallen ten koste van kracht; een week met alleen maar krachtsessies is fout. ` +
+    `Plan ook echte rustdagen in met "type": "rust" (meestal 1–2 per week, afgestemd op de belasting); rustdagen tellen mee in het weektotaal. Een race telt als één sessie/activiteit. ` +
+    `Dubbeltrainingen (twee sessies op één dag) mogen op elke dag, maar zijn niet verplicht: gebruik ze alleen als er anders te weinig dagen zijn voor het geplande aantal sessies. De opgegeven dagen met meer tijd zijn bedoeld voor de lange of tijdrovende sessies (lange duurloop, brick), niet als enige toegestane dubbeldagen. ` +
     `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
     `Gebruik de gekozen herstelmethoden als concrete, haalbare hersteladviezen in weeknotities of sessiedetails; plan ze niet allemaal elke week en presenteer ze als optionele ondersteuning. ` +
     `Events met "support, geen doelrace" zijn extra agenda-activiteiten: plan die dag gewoon de normale training; maak er geen vervangende support-training, taper of herstelweek van. ` +
@@ -235,7 +238,7 @@ export async function POST(req: Request) {
           system_instruction: { parts: [{ text: instruction }] },
           contents: [{ parts: [{ text: context }] }],
           generationConfig: {
-            temperature: 0.5,
+            temperature: 0.2,
             // "low" scheelt enorm in latency zonder dat de plankwaliteit zakt.
             thinkingConfig: { thinkingLevel: "low" },
             responseMimeType: "application/json",
@@ -318,6 +321,37 @@ export async function POST(req: Request) {
     };
   });
 
+  // Vangnet: de AI telt niet betrouwbaar en levert soms één sessie te veel.
+  // sessionsPerWeek is een BOVENGRENS, geen streefaantal, dus we snoeien alleen
+  // wat er in een VOLLEDIGE week (7 toegestane dagen) boven de grens uitkomt —
+  // minder sessies laten we staan en we vullen nooit bij. We kappen ook gym af
+  // op gymDays. Bij snoeien halen we bij voorkeur een sessie van een dubbeldag
+  // en van het minst waardevolle trainingstype (cross < run < brick) weg;
+  // echte rustdagen ("rust") blijven staan zodat de week herstel houdt.
+  const removalRank: Record<string, number> = { cross: 0, run: 1, brick: 2, rust: 9 };
+  for (let wi = 0; wi < weeks.length; wi++) {
+    const week = weeks[wi];
+    const fullWeek = allowedDays(addWeeks(startIso, wi), earliestDate).length === 7;
+    if (!fullWeek) continue;
+    const keep = new Set(week.sessions.map((s) => s.id));
+    const gymIds = week.sessions.filter((s) => s.type === "gym").map((s) => s.id);
+    for (const id of gymIds.slice(profile.gymDays)) keep.delete(id); // overtollige gym
+    const nonGymTarget = Math.max(0, profile.sessionsPerWeek - Math.min(gymIds.length, profile.gymDays));
+    const nonGym = week.sessions.filter((s) => s.type !== "gym" && keep.has(s.id));
+    const overshoot = nonGym.length - nonGymTarget;
+    if (overshoot > 0) {
+      const perDay = new Map<string, number>();
+      for (const s of week.sessions) if (keep.has(s.id)) perDay.set(s.day, (perDay.get(s.day) ?? 0) + 1);
+      const ordered = [...nonGym].sort((a, b) => {
+        const byDay = (perDay.get(b.day) ?? 0) - (perDay.get(a.day) ?? 0); // dubbeldagen eerst
+        if (byDay !== 0) return byDay;
+        return (removalRank[a.type] ?? 2) - (removalRank[b.type] ?? 2); // minst waardevol eerst
+      });
+      for (const s of ordered.slice(0, overshoot)) keep.delete(s.id);
+    }
+    week.sessions = week.sessions.filter((s) => keep.has(s.id));
+  }
+
   // De AI kan een race nog steeds op de verkeerde dag zetten, vergeten of een
   // support-event als training invullen. Races zijn agenda-feiten, dus
   // corrigeer ze deterministisch op basis van de Amsterdamse datum.
@@ -328,10 +362,15 @@ export async function POST(req: Request) {
     const week = weeks.find((candidate) => raceDate >= candidate.startDate && raceDate <= plusDays(candidate.startDate, 6));
     if (!week) continue;
     const tokens = race.title.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
-    week.sessions = week.sessions.filter((session) => {
-      const text = `${session.title} ${session.detail}`.toLowerCase();
-      return !tokens.some((token) => text.includes(token)) && !/support/.test(text);
-    });
+    // De AI zet een support-event soms als "training" in de verkeerde week. Haal
+    // die verzinsels uit ALLE weken weg, niet alleen de week met de racedatum,
+    // anders verschijnt het event dubbel (AI-sessie + het echte support-blok).
+    for (const candidate of weeks) {
+      candidate.sessions = candidate.sessions.filter((session) => {
+        const text = `${session.title} ${session.detail}`.toLowerCase();
+        return !tokens.some((token) => text.includes(token)) && !/support/.test(text);
+      });
+    }
     if (!week.sessions.some((session) => session.day === weekdayForDate(raceDate))) {
       week.sessions.push({
         id: `${blockId}:${week.week}:support-${race.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
