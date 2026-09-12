@@ -4,7 +4,11 @@ import {
   text,
   timestamp,
   uuid,
+  integer,
+  date,
+  jsonb,
   primaryKey,
+  unique,
   index,
 } from "drizzle-orm/pg-core";
 
@@ -79,5 +83,104 @@ export const rsvps = pgTable(
   })
 );
 
+/* ------------------------------ trainingsplan ---------------------------- */
+
+/**
+ * De vragenlijst: één rij per lid. Alles wat de AI nodig heeft om een plan te
+ * bouwen. sports en longRunDays zijn JSON-arrays als tekst (geen aparte tabel;
+ * het is een persoonlijke instelling, geen relatie waar je op joint).
+ */
+export const trainingProfiles = pgTable("training_profiles", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sports: text("sports").notNull().default("[]"), // JSON: ["Hardlopen","Fietsen"]
+  longRunDays: text("long_run_days").notNull().default("[]"), // JSON: ["za","zo"]
+  sessionsPerWeek: integer("sessions_per_week").notNull().default(4),
+  gymDays: integer("gym_days").notNull().default(0), // 0 = geen kracht/gym
+  experience: text("experience"), // vrij veld: huidig niveau / km per week
+  goal: text("goal"), // "wat wil je kunnen worden / doen"
+  // Voor de hartslagzones (zones 1–5). age → schatting max-HR als maxHr leeg is;
+  // restHr maakt de Karvonen-berekening (hartslagreserve) mogelijk.
+  age: integer("age"),
+  maxHr: integer("max_hr"),
+  restHr: integer("rest_hr"),
+  targetRace: text("target_race"), // handmatige doelrace (naast de RSVP-races)
+  targetRaceDate: date("target_race_date"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Eén gegenereerd blok van (max) 10 weken. De weken zelf staan als jsonb: door
+ * de AI gemaakte, geneste structuur die we niet relationeel willen uitsplitsen.
+ * Zie het TrainingWeeks-type hieronder voor de vorm.
+ */
+export const trainingBlocks = pgTable(
+  "training_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockIndex: integer("block_index").notNull(), // 0, 1, 2 … volgorde
+    startDate: date("start_date").notNull(), // maandag waarop het blok begint
+    weeks: jsonb("weeks").$type<TrainingPlan>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    // Eén blok per index per lid; upsert bij opnieuw genereren mikt hierop.
+    userBlock: unique("training_blocks_user_block").on(t.userId, t.blockIndex),
+  })
+);
+
+/**
+ * Afgevinkte sessies. Zelfde toggle-patroon als rsvps: bestaat de rij, dan is
+ * de sessie gedaan. sessionId = "<blockId>:<week>:<index>", stabiel per sessie.
+ */
+export const trainingDone = pgTable(
+  "training_done",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    doneAt: timestamp("done_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.sessionId] }),
+  })
+);
+
+/** De vorm van trainingBlocks.weeks. De AI vult dit; de server kent de id's toe. */
+/** Eén krachtoefening binnen een gym-sessie: naam + voorschrift (sets×reps, RPE, rust). */
+export type TrainingExercise = {
+  name: string; // "Back squat", "Romanian deadlift"
+  prescription: string; // "4×8 @ RPE 7, 90s rust"
+};
+export type TrainingSession = {
+  id: string; // "<blockId>:<week>:<index>"
+  day: string; // "ma".."zo"
+  type: "run" | "gym" | "cross" | "brick" | "rust";
+  title: string; // "Duurloop", "Kracht: benen", "Intervals 6×800m"
+  duration: string; // "45 min", "10 km"
+  detail: string; // uitleg / uitvoering
+  // Alleen voor type "gym": precies 6 oefeningen. Leeg bij de overige types.
+  exercises?: TrainingExercise[];
+};
+export type TrainingWeek = {
+  week: number; // absoluut weeknummer over blokken heen
+  startDate: string; // "YYYY-MM-DD"
+  theme: string; // "Rustige opbouw"
+  note: string; // coach-notitie voor de week
+  sessions: TrainingSession[];
+};
+export type TrainingPlan = {
+  focus: string; // waar dit blok op mikt
+  weeks: TrainingWeek[];
+};
+
 export type Event = typeof events.$inferSelect;
 export type Rsvp = typeof rsvps.$inferSelect;
+export type TrainingProfile = typeof trainingProfiles.$inferSelect;
+export type TrainingBlock = typeof trainingBlocks.$inferSelect;

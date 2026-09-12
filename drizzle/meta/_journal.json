@@ -36,6 +36,20 @@
       "when": 1789069282896,
       "tag": "0004_aberrant_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789205277957,
+      "tag": "0005_pretty_bloodstorm",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789211127431,
+      "tag": "0006_many_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

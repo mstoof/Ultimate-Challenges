@@ -124,6 +124,9 @@ export default async function Home() {
           <h1>Ultimate Challenges</h1>
         </div>
         <div className="home__account">
+          <Link href="/plan" className="home__admin">
+            Mijn plan
+          </Link>
           {admin && (
             <Link href="/admin" className="home__admin">
               Admin

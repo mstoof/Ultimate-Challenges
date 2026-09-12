@@ -1,0 +1,325 @@
+import { NextResponse } from "next/server";
+import { and, asc, desc, eq, like } from "drizzle-orm";
+import { db } from "@/db/client";
+import { trainingBlocks, trainingDone, trainingProfiles } from "@/db/schema";
+import type { TrainingPlan, TrainingWeek } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { addWeeks, loadTargetRaces, mondayOf, weeksUntil, WEEKS_PER_BLOCK } from "@/lib/training";
+
+// Bouwt een blok van 10 trainingsweken met Google Gemini, net als de
+// event-import (app/api/import-event). "append" zet er 10 weken bij; "regenerate"
+// vervangt een bestaand blok (en wist de afvink-status van dat blok).
+export const dynamic = "force-dynamic";
+// Een heel blok genereren duurt ~30s; geef de serverless-functie de ruimte.
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Log eerst in." }, { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    return NextResponse.json(
+      { error: "De AI-coach is niet geconfigureerd (GEMINI_API_KEY ontbreekt)." },
+      { status: 503 }
+    );
+  }
+
+  let mode: "append" | "regenerate" = "append";
+  let wantIndex: number | undefined;
+  let adjust = "";
+  try {
+    const body = await req.json();
+    if (body?.mode === "regenerate") mode = "regenerate";
+    if (typeof body?.blockIndex === "number") wantIndex = body.blockIndex;
+    if (typeof body?.adjust === "string") adjust = body.adjust.slice(0, 500).trim();
+  } catch {
+    return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
+  }
+
+  const [profile] = await db
+    .select()
+    .from(trainingProfiles)
+    .where(eq(trainingProfiles.userId, userId));
+  if (!profile) {
+    return NextResponse.json({ error: "Vul eerst de vragenlijst in." }, { status: 400 });
+  }
+
+  const blocks = await db
+    .select()
+    .from(trainingBlocks)
+    .where(eq(trainingBlocks.userId, userId))
+    .orderBy(asc(trainingBlocks.blockIndex));
+
+  // Bepaal welk blok we (her)bouwen: welke index, op welke maandag, welk
+  // absoluut weeknummer. Bij regenerate hergebruiken we de bestaande rij.
+  let blockId: string;
+  let blockIndex: number;
+  let startIso: string;
+  let existingBlockId: string | null = null;
+
+  if (mode === "regenerate") {
+    const target = blocks.find((b) => b.blockIndex === wantIndex);
+    if (!target) {
+      return NextResponse.json({ error: "Dat blok bestaat niet." }, { status: 400 });
+    }
+    blockId = target.id;
+    existingBlockId = target.id;
+    blockIndex = target.blockIndex;
+    startIso = target.startDate;
+  } else {
+    const last = blocks[blocks.length - 1];
+    blockIndex = last ? last.blockIndex + 1 : 0;
+    startIso = last ? addWeeks(last.startDate, WEEKS_PER_BLOCK) : mondayOf(new Date());
+    blockId = crypto.randomUUID();
+  }
+
+  const startWeek = blockIndex * WEEKS_PER_BLOCK + 1;
+
+  // Doelraces, met "weken tot de race" gerekend vanaf vandaag.
+  const races = await loadTargetRaces(userId);
+  const raceLines = races.length
+    ? races
+        .map((r) =>
+          r.date
+            ? `- ${r.title} op ${r.date.toISOString().slice(0, 10)} (over ~${weeksUntil(r.date)} weken)`
+            : `- ${r.title} (nog geen datum)`
+        )
+        .join("\n")
+    : "- (nog geen races gekozen — bouw een algemene opbouw richting het doel)";
+
+  // Korte samenvatting van eerdere blokken, zodat de opbouw doorloopt.
+  const others = blocks.filter((b) => b.id !== existingBlockId);
+  const historyLines = others.length
+    ? others
+        .map((b) => {
+          const w = (b.weeks as TrainingPlan)?.weeks ?? [];
+          const from = w[0]?.week ?? b.blockIndex * WEEKS_PER_BLOCK + 1;
+          const to = w[w.length - 1]?.week ?? from + WEEKS_PER_BLOCK - 1;
+          return `- Week ${from}–${to}: ${(b.weeks as TrainingPlan)?.focus ?? "onbekend"}`;
+        })
+        .join("\n")
+    : "- (dit is het eerste blok)";
+
+  const sports = safeJsonArray(profile.sports);
+  const longRunDays = safeJsonArray(profile.longRunDays);
+
+  const gymRule =
+    profile.gymDays > 0
+      ? `De sporter doet ${profile.gymDays} dag(en) per week kracht. Elke sessie met "type": "gym" krijgt in "exercises" precies 6 oefeningen, ` +
+        `elk met "name" (de oefening) en "prescription" (sets×reps met eventueel gewicht/RPE en rust, bv. "4×8 @ RPE 7, 90s rust"). ` +
+        `Bij alle andere types laat je "exercises" leeg. `
+      : `De sporter doet geen krachttraining: gebruik geen "gym"-sessies en laat "exercises" overal leeg. `;
+
+  const baseInstruction =
+    `Je bent een ervaren hardloop- en krachttrainer die een trainingsschema maakt voor één sporter. ` +
+    `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
+    `Verdeel per week het aantal sessies dat de sporter aankan; leg lange/dubbele trainingen op de dagen waarop hij tijd heeft. ` +
+    `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
+    gymRule +
+    `Gebruik "type": "run" (hardlopen), "gym" (kracht), "cross" (aanvullend zoals fietsen/zwemmen), "brick" (combitraining) of "rust". ` +
+    `"day" is een van: ma, di, wo, do, vr, za, zo. "duration" kort, bv. "45 min" of "12 km". ` +
+    `"detail" beschrijft de uitvoering (tempo, hartslagzone, sets×reps). Houd het motiverend maar realistisch.`;
+
+  const baseContext =
+    `SPORTER\n` +
+    `- Sporten: ${sports.join(", ") || "hardlopen"}\n` +
+    `- Sessies per week: ${profile.sessionsPerWeek}\n` +
+    `- Krachttraining: ${profile.gymDays > 0 ? `${profile.gymDays} dag(en) per week` : "geen"}\n` +
+    `- Dagen voor lange/dubbele trainingen: ${longRunDays.join(", ") || "weekend"}\n` +
+    `- Niveau/achtergrond: ${profile.experience || "onbekend"}\n` +
+    `- Doel: ${profile.goal || "algemeen fitter en sterker worden"}\n\n` +
+    `DOELRACES\n${raceLines}\n\n` +
+    `EERDERE BLOKKEN\n${historyLines}\n\n` +
+    (adjust ? `BIJSTUREN (verwerk dit): ${adjust}\n\n` : "");
+
+  const RESPONSE_SCHEMA = {
+    type: "OBJECT",
+    properties: {
+      focus: { type: "STRING" },
+      weeks: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            theme: { type: "STRING" },
+            note: { type: "STRING" },
+            sessions: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  day: { type: "STRING", enum: ["ma", "di", "wo", "do", "vr", "za", "zo"] },
+                  type: { type: "STRING", enum: ["run", "gym", "cross", "brick", "rust"] },
+                  title: { type: "STRING" },
+                  duration: { type: "STRING" },
+                  detail: { type: "STRING" },
+                  exercises: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        name: { type: "STRING" },
+                        prescription: { type: "STRING" },
+                      },
+                      required: ["name", "prescription"],
+                    },
+                  },
+                },
+                required: ["day", "type", "title", "duration", "detail"],
+              },
+            },
+          },
+          required: ["theme", "note", "sessions"],
+        },
+      },
+    },
+    required: ["focus", "weeks"],
+  };
+
+  type RawWeek = Omit<TrainingWeek, "week" | "startDate" | "sessions"> & {
+    sessions?: Array<{
+      day: string; type: string; title: string; duration: string; detail: string;
+      exercises?: Array<{ name?: string; prescription?: string }>;
+    }>;
+  };
+
+  // Eén helft van 5 weken genereren. We knippen het blok van 10 weken in twee
+  // parallelle calls: elk is korter en dus sneller (~30s), en samen blijven we
+  // ruim onder de serverless-limiet — ook met 6 oefeningen per gym-sessie.
+  async function generateHalf(fromWeek: number, count: number, phaseNote: string) {
+    const instruction =
+      baseInstruction +
+      ` Je maakt nu precies ${count} weken: absolute week ${fromWeek} t/m ${fromWeek + count - 1} van het totale plan. ${phaseNote}`;
+    const context = baseContext + `Maak nu week ${fromWeek} t/m ${fromWeek + count - 1}.`;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: instruction }] },
+          contents: [{ parts: [{ text: context }] }],
+          generationConfig: {
+            temperature: 0.5,
+            // "low" scheelt enorm in latency zonder dat de plankwaliteit zakt.
+            thinkingConfig: { thinkingLevel: "low" },
+            responseMimeType: "application/json",
+            responseSchema: RESPONSE_SCHEMA,
+          },
+        }),
+        signal: AbortSignal.timeout(55000),
+      }
+    );
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(`AI gaf een fout (${res.status}). ${detail.slice(0, 160)}`);
+    }
+    const payload = await res.json().catch(() => null);
+    const text: string | undefined = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("Geen bruikbaar antwoord van de AI.");
+    let parsed: { focus?: string; weeks?: RawWeek[] };
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error("AI-antwoord was geen geldige JSON.");
+    }
+    return { focus: parsed.focus ?? "", weeks: parsed.weeks ?? [] };
+  }
+
+  const firstCount = Math.ceil(WEEKS_PER_BLOCK / 2); // 5
+  const secondCount = WEEKS_PER_BLOCK - firstCount; // 5
+  let firstHalf: { focus: string; weeks: RawWeek[] };
+  let secondHalf: { focus: string; weeks: RawWeek[] };
+  try {
+    [firstHalf, secondHalf] = await Promise.all([
+      generateHalf(startWeek, firstCount, "Dit is de eerste helft van dit blok: leg de basis en bouw rustig op."),
+      generateHalf(
+        startWeek + firstCount,
+        secondCount,
+        "Dit is de tweede helft van dit blok: bouw voort op de basis uit de eerste helft, verhoog de belasting en spits toe richting de dichtstbijzijnde race."
+      ),
+    ]);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Kon de AI-coach niet bereiken." },
+      { status: 502 }
+    );
+  }
+
+  const rawWeeks: RawWeek[] = [...firstHalf.weeks, ...secondHalf.weeks];
+  const focusText = firstHalf.focus || secondHalf.focus;
+
+  // Weeknummers en datums bepalen wij deterministisch (niet de AI vertrouwen);
+  // de AI levert alleen thema, notitie en sessies. Sessie-id's zijn stabiel.
+  const weeks: TrainingWeek[] = rawWeeks.slice(0, WEEKS_PER_BLOCK).map((w, wi) => {
+    const week = startWeek + wi;
+    return {
+      week,
+      startDate: addWeeks(startIso, wi),
+      theme: w.theme ?? "",
+      note: w.note ?? "",
+      sessions: (w.sessions ?? []).map((s, si) => {
+        const type = (["run", "gym", "cross", "brick", "rust"].includes(s.type)
+          ? s.type
+          : "run") as TrainingWeek["sessions"][number]["type"];
+        // Oefeningen alleen bewaren bij gym-sessies (max 6, lege eruit).
+        const exercises =
+          type === "gym"
+            ? (s.exercises ?? [])
+                .map((e) => ({ name: (e.name ?? "").trim(), prescription: (e.prescription ?? "").trim() }))
+                .filter((e) => e.name)
+                .slice(0, 6)
+            : undefined;
+        return {
+          id: `${blockId}:${week}:${si}`,
+          day: s.day,
+          type,
+          title: s.title ?? "",
+          duration: s.duration ?? "",
+          detail: s.detail ?? "",
+          ...(exercises && exercises.length ? { exercises } : {}),
+        };
+      }),
+    };
+  });
+
+  if (weeks.length === 0) {
+    return NextResponse.json({ error: "De AI leverde geen weken op. Probeer opnieuw." }, { status: 502 });
+  }
+
+  const plan: TrainingPlan = { focus: focusText, weeks };
+
+  if (mode === "regenerate") {
+    // Oude afvink-status van dit blok wissen: de sessie-id's veranderen.
+    await db.delete(trainingDone).where(
+      and(eq(trainingDone.userId, userId), like(trainingDone.sessionId, `${blockId}:%`))
+    );
+    await db
+      .update(trainingBlocks)
+      .set({ weeks: plan, updatedAt: new Date() })
+      .where(eq(trainingBlocks.id, blockId));
+  } else {
+    await db.insert(trainingBlocks).values({
+      id: blockId,
+      userId,
+      blockIndex,
+      startDate: startIso,
+      weeks: plan,
+    });
+  }
+
+  return NextResponse.json({ ok: true, blockIndex });
+}
+
+function safeJsonArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
