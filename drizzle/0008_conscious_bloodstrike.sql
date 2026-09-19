@@ -1,0 +1,1 @@
+ALTER TABLE "training_profiles" ADD COLUMN "gym_splits" text DEFAULT '[]' NOT NULL;

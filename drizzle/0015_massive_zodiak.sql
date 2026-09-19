@@ -1,0 +1,1 @@
+ALTER TABLE "gear_items" ADD COLUMN "shared_key" text;
