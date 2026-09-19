@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+/* De fonts worden als gedeelde stylesheet geladen zodat lokale builds en
+   forks geen fontdownload tijdens `next build` nodig hebben. */
+/* eslint-disable @next/next/no-page-custom-font */
+
 export const metadata: Metadata = {
   title: "Ultimate Challenges",
   description: "Gedeelde agenda voor sportuitdagingen. Doe mee of kom supporten.",

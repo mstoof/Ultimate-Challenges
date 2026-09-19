@@ -1,0 +1,64 @@
+name: Bug report
+description: Meld een reproduceerbaar probleem in Ultimate Challenges
+title: ""
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bedankt voor je melding. Zoek eerst in bestaande open en gesloten issues en verwijder secrets of persoonsgegevens uit logs.
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschrijving
+      description: Wat ging er mis en wat verwachtte je?
+      placeholder: Beschrijf het probleem zo concreet mogelijk.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Stappen om te reproduceren
+      placeholder: |
+        1. Ga naar …
+        2. Klik op …
+        3. Zie fout …
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Omgeving
+      options:
+        - Lokale developmentserver
+        - Vercel Preview
+        - Vercel Production
+        - Andere self-hosted omgeving
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versie of commit
+      placeholder: Commit-hash, branch of release
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevante logs
+      description: Verwijder database-URL’s, tokens, e-mailadressen en andere gevoelige informatie.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Aanvullende informatie
+      description: Browser, Node.js-versie, screenshots of andere relevante context.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Controle
+      options:
+        - label: Ik heb open en gesloten issues doorzocht.
+          required: true
+        - label: Ik heb secrets en persoonsgegevens verwijderd.
+          required: true
+

@@ -102,7 +102,7 @@ export async function POST(req: Request) {
             : `- ${r.title} (nog geen datum)`
         )
         .join("\n")
-    : "- (nog geen races gekozen — bouw een algemene opbouw richting het doel)";
+    : "- (nog geen races gekozen, bouw een algemene opbouw richting het doel)";
 
   // Korte samenvatting van eerdere blokken, zodat de opbouw doorloopt.
   const others = blocks.filter((b) => b.id !== existingBlockId);
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
           const w = (b.weeks as TrainingPlan)?.weeks ?? [];
           const from = w[0]?.week ?? b.blockIndex * WEEKS_PER_BLOCK + 1;
           const to = w[w.length - 1]?.week ?? from + WEEKS_PER_BLOCK - 1;
-          return `- Week ${from}–${to}: ${(b.weeks as TrainingPlan)?.focus ?? "onbekend"}`;
+          return `- Week ${from} tot ${to}: ${(b.weeks as TrainingPlan)?.focus ?? "onbekend"}`;
         })
         .join("\n")
     : "- (dit is het eerste blok)";
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
   const zones = computeZones(profile);
   const zoneContext = zones
     ? `Hartslagzones voor hardlopen (${zones.method === "hrr" ? "hartslagreserve / Karvonen" : "% max-hartslag"}; max ${zones.maxHr} bpm${zones.estimatedMax ? ", geschat uit leeftijd" : ""}):\n` +
-      zones.zones.map((z) => `- Z${z.zone} (${z.label}): ${z.low}–${z.high} bpm`).join("\n") +
+      zones.zones.map((z) => `- Z${z.zone} (${z.label}): ${z.low} tot ${z.high} bpm`).join("\n") +
       "\nGebruik bij looptrainingen alleen de labels Z1, Z2, Z3, Z4 of Z5 in title en detail. Schrijf geen bpm-waarden of hartslagbereiken in de trainingstekst; die staan in een apart overzicht.\n"
     : "Geen persoonlijke hartslagzones beschikbaar. Gebruik inspanning/gesprekstempo en verzin geen bpm-grenzen.\n";
 
@@ -133,18 +133,18 @@ export async function POST(req: Request) {
   const baseInstruction =
     `Je bent een ervaren hardloop- en krachttrainer die een trainingsschema maakt voor één sporter. ` +
     `Antwoord uitsluitend met de gevraagde JSON, in het Nederlands. ` +
-    `Een normale opbouwweek zit rond de ${profile.sessionsPerWeek} sessies in totaal: plan in een VOLLEDIGE week minstens ${Math.max(1, profile.sessionsPerWeek - 2)} en hoogstens ${profile.sessionsPerWeek} sessies. Overschrijd ${profile.sessionsPerWeek} nooit, maar plan ook niet structureel veel minder (dus geen week van 7 of 8 als er ${profile.sessionsPerWeek} gevraagd is) — behalve in een bewuste herstel- of taperweek, die mag lichter zijn. ` +
+    `Een normale opbouwweek zit rond de ${profile.sessionsPerWeek} sessies in totaal: plan in een VOLLEDIGE week minstens ${Math.max(1, profile.sessionsPerWeek - 2)} en hoogstens ${profile.sessionsPerWeek} sessies. Overschrijd ${profile.sessionsPerWeek} nooit, maar plan ook niet structureel veel minder (dus geen week van 7 of 8 als er ${profile.sessionsPerWeek} gevraagd is), behalve in een bewuste herstel- of taperweek, die mag lichter zijn. ` +
     `Plan per volledige week ${profile.gymDays} krachtsessies ("type": "gym"), minimaal ${Math.max(1, profile.gymDays - 1)}. ` +
-    `Kracht en hardlopen zijn samen even belangrijk: plan per volledige week MINSTENS ${Math.max(1, profile.sessionsPerWeek - profile.gymDays - 1)} hardloop-/crosstrainingen (duurloop, tempo, interval, lange duurloop, brick), naast de kracht en 1–2 rustdagen. Laat hardlopen dus NIET wegvallen ten koste van kracht; een week met alleen maar krachtsessies is fout. ` +
-    `Plan ook echte rustdagen in met "type": "rust" (meestal 1–2 per week, afgestemd op de belasting); rustdagen tellen mee in het weektotaal. Een race telt als één sessie/activiteit. ` +
+    `Kracht en hardlopen zijn samen even belangrijk: plan per volledige week MINSTENS ${Math.max(1, profile.sessionsPerWeek - profile.gymDays - 1)} hardloop- of crosstrainingen (duurloop, tempo, interval, lange duurloop, brick), naast de kracht en één of twee rustdagen. Laat hardlopen dus NIET wegvallen ten koste van kracht; een week met alleen maar krachtsessies is fout. ` +
+    `Plan ook echte rustdagen in met "type": "rust" (meestal één of twee per week, afgestemd op de belasting); rustdagen tellen mee in het weektotaal. Een race telt als één sessie of activiteit. ` +
     `Dubbeltrainingen (twee sessies op één dag) mogen op elke dag, maar zijn niet verplicht: gebruik ze alleen als er anders te weinig dagen zijn voor het geplande aantal sessies. De opgegeven dagen met meer tijd zijn bedoeld voor de lange of tijdrovende sessies (lange duurloop, brick), niet als enige toegestane dubbeldagen. ` +
-    `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste 1–2 weken vóór een race). ` +
+    `Bouw geleidelijk op (progressieve overload), plan herstelweken en spits toe richting de dichtstbijzijnde race (taper de laatste één of twee weken vóór een race). ` +
     `Gebruik de gekozen herstelmethoden als concrete, haalbare hersteladviezen in weeknotities of sessiedetails; plan ze niet allemaal elke week en presenteer ze als optionele ondersteuning. ` +
     `Events met "support, geen doelrace" zijn extra agenda-activiteiten: plan die dag gewoon de normale training; maak er geen vervangende support-training, taper of herstelweek van. ` +
     `Zet iedere doelrace op de exacte Amsterdamse kalenderdatum en weekdag die hieronder staat; verplaats hem niet naar een andere dag. ` +
     gymRule +
     `Gebruik "type": "run" (hardlopen), "gym" (kracht), "cross" (aanvullend zoals fietsen/zwemmen), "brick" (combitraining) of "rust". ` +
-    `Geef elke week een korte, onderscheidende theme van 2–6 woorden die de trainingsfase samenvat; herhaal geen generieke titels en zet geen weeknummer in theme of note. ` +
+    `Geef elke week een korte, onderscheidende theme van 2 tot 6 woorden die de trainingsfase samenvat; herhaal geen generieke titels en zet geen weeknummer in theme of note. ` +
     `Geef focus een concrete samenvatting van dit specifieke blok van ${WEEKS_PER_BLOCK} weken, bijvoorbeeld "Basis en techniek → racevoorbereiding"; gebruik geen algemene tekst zoals "algemeen fitter worden". ` +
     `"day" is een van: ma, di, wo, do, vr, za, zo. "duration" kort, bv. "45 min" of "12 km". ` +
     `"detail" beschrijft de uitvoering (tempo, hartslagzone, sets×reps). Houd het motiverend maar realistisch.`;
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
 
   // Eén helft van 5 weken genereren. We knippen het blok van 10 weken in twee
   // parallelle calls: elk is korter en dus sneller (~30s), en samen blijven we
-  // ruim onder de serverless-limiet — ook met 6 oefeningen per gym-sessie.
+  // ruim onder de serverless-limiet, ook met 6 oefeningen per gym-sessie.
   async function generateHalf(fromWeek: number, count: number, phaseNote: string) {
     const instruction =
       baseInstruction +
@@ -323,7 +323,7 @@ export async function POST(req: Request) {
 
   // Vangnet: de AI telt niet betrouwbaar en levert soms één sessie te veel.
   // sessionsPerWeek is een BOVENGRENS, geen streefaantal, dus we snoeien alleen
-  // wat er in een VOLLEDIGE week (7 toegestane dagen) boven de grens uitkomt —
+  // wat er in een VOLLEDIGE week (7 toegestane dagen) boven de grens uitkomt.
   // minder sessies laten we staan en we vullen nooit bij. We kappen ook gym af
   // op gymDays. Bij snoeien halen we bij voorkeur een sessie van een dubbeldag
   // en van het minst waardevolle trainingstype (cross < run < brick) weg;
@@ -415,7 +415,7 @@ export async function POST(req: Request) {
       id: `${blockId}:${week.week}:race-${race.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       day: raceDay,
       type: "run",
-      title: `${race.title} — race`,
+      title: `${race.title} | race`,
       duration: "",
       detail: "Racedag. Stem je inspanning af op het evenement en geniet ervan.",
     });

@@ -50,8 +50,8 @@ function weekRange(iso: string) {
   const startMonth = MONTHS[startDate.getMonth()];
   const endMonth = MONTHS[endDate.getMonth()];
   return startMonth === endMonth
-    ? `${startDate.getDate()}–${endDate.getDate()} ${endMonth}`
-    : `${startDate.getDate()} ${startMonth}–${endDate.getDate()} ${endMonth}`;
+    ? `${startDate.getDate()} tot ${endDate.getDate()} ${endMonth}`
+    : `${startDate.getDate()} ${startMonth} tot ${endDate.getDate()} ${endMonth}`;
 }
 function dateKey(value: string) {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(new Date(value));
@@ -271,7 +271,7 @@ export default function PlanView({
 
               <CollapsibleBlock
                 isCurrent={blockIsCurrent}
-                label={`Weken ${plan.weeks[0]?.week ?? block.blockIndex * 10 + 1}–${plan.weeks.at(-1)?.week ?? (block.blockIndex + 1) * 10}`}
+                label={`Weken ${plan.weeks[0]?.week ?? block.blockIndex * 10 + 1} tot ${plan.weeks.at(-1)?.week ?? (block.blockIndex + 1) * 10}`}
               >
               <ol className="plan__weeks">
                 {plan.weeks.map((w) => (
@@ -364,7 +364,7 @@ export default function PlanView({
             disabled={busy || !aiEnabled}
             onClick={() => build("append")}
           >
-            {busy ? "Bezig met bouwen…" : `Bouw week ${nextBlockNumber}–${nextBlockNumber + 9}`}
+            {busy ? "Bezig met bouwen..." : `Bouw week ${nextBlockNumber} tot ${nextBlockNumber + 9}`}
           </button>
         </div>
       )}
@@ -387,7 +387,7 @@ function HeartRateZones({ zones }: { zones: ZoneResult | null }) {
             <thead><tr><th scope="col">Zone</th><th scope="col">Doel</th><th scope="col">bpm</th></tr></thead>
             <tbody>
               {zones.zones.map((z) => (
-                <tr key={z.zone}><th scope="row">Z{z.zone}</th><td>{z.label}</td><td>{z.low}–{z.high}</td></tr>
+                <tr key={z.zone}><th scope="row">Z{z.zone}</th><td>{z.label}</td><td>{z.low} tot {z.high}</td></tr>
               ))}
             </tbody>
           </table>

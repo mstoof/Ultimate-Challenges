@@ -6,6 +6,7 @@ import { events } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { amsterdamInput, parseAmsterdam } from "@/lib/timezone";
 import { logoSrc } from "@/lib/logo";
+import { safePublicUrl } from "@/lib/safe-url";
 import DeleteButton from "./DeleteButton";
 import SportDistance from "./SportDistance";
 
@@ -48,6 +49,10 @@ export default async function EditEventPage({ params, searchParams }: Props) {
 
     const signupUrl = String(formData.get("signupUrl") ?? "").trim() || null;
     const imageInput = String(formData.get("imageUrl") ?? "").trim() || null;
+    if (imageInput) {
+      try { await safePublicUrl(imageInput); }
+      catch { redirect(`/e/${slug}/edit?error=link`); }
+    }
 
     let startsAt: Date | null = null;
     let endsAt: Date | null = null;
@@ -98,6 +103,7 @@ export default async function EditEventPage({ params, searchParams }: Props) {
 
       {error === "leeg" && <p className="form__error">Naam, locatie en datum zijn verplicht.</p>}
       {error === "datum" && <p className="form__error">Die datum kon ik niet lezen.</p>}
+      {error === "link" && <p className="form__error">Gebruik voor een logo een openbare http(s)-link.</p>}
 
       <form action={updateEvent}>
         <label htmlFor="title">Wat gaan we doen</label>
@@ -126,7 +132,7 @@ export default async function EditEventPage({ params, searchParams }: Props) {
 
         <label className="form__check">
           <input type="checkbox" name="someday" defaultChecked={!event.startsAt} />
-          Nog geen datum — zet op de <strong>someday</strong>-lijst (bucketlist)
+          Nog geen datum. Zet dit op de <strong>someday</strong>-lijst (bucketlist)
         </label>
 
         <label htmlFor="price">Deelnamekosten</label>

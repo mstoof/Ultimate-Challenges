@@ -7,6 +7,7 @@ import { events, rsvps, gearSports } from "@/db/schema";
 import { parseAmsterdam } from "@/lib/timezone";
 import { auth } from "@/lib/auth";
 import { logoSrc } from "@/lib/logo";
+import { safePublicUrl } from "@/lib/safe-url";
 
 function slugify(value: string) {
   return value
@@ -53,6 +54,10 @@ export async function createEvent(formData: FormData) {
   const slug = await uniqueSlug(slugify(title));
   const signupUrl = String(formData.get("signupUrl") ?? "").trim() || null;
   const imageInput = String(formData.get("imageUrl") ?? "").trim() || null;
+  if (imageInput) {
+    try { await safePublicUrl(imageInput); }
+    catch { redirect("/new?error=link"); }
+  }
 
   const [created] = await db
     .insert(events)

@@ -50,7 +50,7 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
     <>
       <h1>Jouw trainingsplan</h1>
       <p className="form__lead">
-        Beantwoord een paar vragen, dan bouwt de AI-coach een schema van 10 weken richting je races —
+        Beantwoord een paar vragen, dan bouwt de AI-coach een schema van 10 weken richting je races.
         hardlopen én kracht. Later laat je gewoon de volgende 10 weken bijbouwen.
       </p>
 
@@ -186,7 +186,7 @@ export default function Questionnaire({ races, raceOptions }: { races: RaceHint[
         <fieldset className="quiz__section">
           <legend>5. Jouw hartslagzones</legend>
           <p className="quiz__hint">
-            Hiermee rekenen we je zones 1–5 uit. Max-hartslag mag leeg — dan schatten we die uit je
+            Hiermee rekenen we je zones 1 tot 5 uit. Max-hartslag mag leeg. Dan schatten we die uit je
             leeftijd. Rusthartslag maakt de berekening nauwkeuriger.
           </p>
           <div className="form__two">

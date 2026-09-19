@@ -9,3 +9,6 @@ next-env.d.ts
 .idea
 .claude
 .DS_Store
+
+# Lokale productplanning die nog niet klaar is om te delen.
+docs/mobile-app-store-plan.md

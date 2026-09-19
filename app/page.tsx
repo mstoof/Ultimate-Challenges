@@ -168,7 +168,7 @@ export default async function Home() {
           })}
 
           <section className="home__section">
-            <h2 className="home__heading">Ooit — bucketlist</h2>
+            <h2 className="home__heading">Ooit, bucketlist</h2>
             {someday.length ? (
               <ol className="home__list home__scroll">{someday.map(row)}</ol>
             ) : (

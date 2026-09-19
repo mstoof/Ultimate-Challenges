@@ -33,9 +33,9 @@ export function gymInstructions(gymDays: number, input: unknown): string {
   const splits = GYM_SPLITS.filter((split) => selected.includes(split.id));
   const focus = splits.length
     ? `Gekozen volledige gymsplit${splits.length > 1 ? "s" : ""}: ${splits.map((split) => `${split.label} (${split.focus}; ${split.days})`).join("; ")}. ` +
-      `Gebruik één gekozen systeem als leidraad: zet de fase of trainingsdag van de split in de gymsessietitel (bijvoorbeeld “PPL — Push” of “Upper/Lower — Lower”) en kies oefeningen passend bij die fase. ` +
+      `Gebruik één gekozen systeem als leidraad: zet de fase of trainingsdag van de split in de gymsessietitel (bijvoorbeeld “PPL, Push” of “Upper/Lower, Lower”) en kies oefeningen passend bij die fase. ` +
       `De rotatielengte van de split (bijvoorbeeld 3 dagen bij PPL) is NIET het aantal gymdagen: herhaal de fases in vaste volgorde net zo vaak als nodig om precies ${gymDays} gymsessies per volledige week te vullen (bij ${gymDays} gymdagen en PPL bijvoorbeeld: Push, Pull, Legs, Push, Pull, Legs). Meerdere gekozen splits voegen geen extra gymdagen toe. `
     : 'Er is geen splitvoorkeur: kies zelf één evenwichtige indeling passend bij het aantal gymdagen. ';
-  return `De sporter doet krachttraining: plan in elke volledige week precies ${gymDays} sessies met "type": "gym" (in een gedeeltelijke week naar rato minder). ` + focus +
+  return `De sporter doet krachttraining: plan in elke volledige week precies ${gymDays} dag(en) met een sessie met "type": "gym" (in een gedeeltelijke week naar rato minder). ` + focus +
     'Plan voldoende herstel tussen sessies voor dezelfde spiergroepen en stem beentraining af op lange of zware looptrainingen. Elke sessie met "type": "gym" krijgt in "exercises" precies 6 oefeningen, elk met "name" en "prescription" (sets×reps met eventueel gewicht/RPE en rust). Bij alle andere types laat je "exercises" leeg. ';
 }

@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: Props) {
   const where = date ? `${date} in ${event.location}` : `Ooit · ${event.location}`;
 
   return {
-    title: `${event.title} — Ultimate Challenges`,
+    title: `${event.title} | Ultimate Challenges`,
     description: `${where}. ${runners} aangemeld. Doe je mee of kom je supporten?`,
     openGraph: { type: "website" },
   };
@@ -280,7 +280,7 @@ export default async function EventPage({ params, searchParams }: Props) {
       <section className="event__dashboard" aria-label="Event-dashboard">
         <div><span>Team</span><strong>{activePeople.length}</strong><small>{group("run").length} deelnemers · {group("support").length} support</small></div>
         <div><span>Reis geregeld</span><strong>{travelReady}/{activePeople.length}</strong><small>{activePeople.filter((person) => person.needsRide).length} zoeken vervoer</small></div>
-        <Link href="/plan"><span>Mijn training</span><strong>{sessionIds.length ? `${Math.round(trainingDoneCount / sessionIds.length * 100)}%` : "—"}</strong><small>{trainingDoneCount}/{sessionIds.length} sessies voltooid</small></Link>
+        <Link href="/plan"><span>Mijn training</span><strong>{sessionIds.length ? `${Math.round(trainingDoneCount / sessionIds.length * 100)}%` : "Geen"}</strong><small>{trainingDoneCount}/{sessionIds.length} sessies voltooid</small></Link>
         <Link href="/gear"><span>Mijn gear</span><strong>{missingGear.length}</strong><small>items ontbreken voor dit event</small></Link>
         <div><span>Gedeelde kosten</span><strong>{euro(totalCosts)}</strong><small>{activePeople.length ? `${euro(Math.round(totalCosts / activePeople.length))} p.p.` : "nog niet verdeeld"}</small></div>
         <div><span>Deadlines</span><strong>{openTasks}</strong><small>openstaande acties</small></div>

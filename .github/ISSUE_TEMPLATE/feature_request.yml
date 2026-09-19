@@ -1,0 +1,50 @@
+name: Feature request
+description: Stel een gerichte verbetering voor
+title: ""
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Goede voorstellen beginnen met een duidelijk probleem en gebruiksscenario, niet alleen met een technische oplossing.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Probleem
+      description: Welk probleem lost deze feature op en voor wie?
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Gebruiksscenario
+      description: Beschrijf een concreet voorbeeld van begin tot eind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Voorgestelde oplossing
+      description: Hoe zou de gebruikerservaring eruitzien?
+    validations:
+      required: true
+  - type: textarea
+    id: technical
+    attributes:
+      label: Mogelijke technische gevolgen
+      description: Denk aan database, migraties, externe diensten, privacy en security.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Afbakening
+      description: Wat hoort bewust niet bij dit voorstel?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Controle
+      options:
+        - label: Ik heb open en gesloten issues doorzocht.
+          required: true
+        - label: Dit voorstel past binnen niet-commercieel gebruik van het project.
+          required: true
+

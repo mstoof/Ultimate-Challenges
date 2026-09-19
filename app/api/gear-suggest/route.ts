@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     `zet de aanbevolen framemaat in "size" als het profiel dat verantwoord toelaat, gebruik "tw" en noem in "note" kort wat bij tweedehands gecontroleerd moet worden (frame, lagers, aandrijving en onderhoud). ` +
     `Gebruik "sharedKey" voor één fysiek product dat logisch in meerdere sporten gebruikt wordt. Gebruik exact dezelfde korte kebab-case sleutel over sporten heen, ` +
     `bijvoorbeeld "bike-gps" voor een fiets-GPS bij wielrennen, triatlon en mountainbiken. Laat sharedKey leeg voor sportspecifieke of individueel benodigde items. ` +
-    `"tags" is een lijst met nul of meer van: "tw" (tweedehands verantwoord), "no" (koop nieuw — verplicht bij helmen, schoenen en andere veiligheids-/pasvormitems), "ch" (er valt nog een keuze te maken), "op" (optioneel/niet essentieel). ` +
+    `"tags" is een lijst met nul of meer van: "tw" (tweedehands verantwoord), "no" (koop nieuw, verplicht bij helmen, schoenen en andere veiligheids- en pasvormitems), "ch" (er valt nog een keuze te maken), "op" (optioneel/niet essentieel). ` +
     `Zet nooit "tw" én "no" samen op één item. Wees eerlijk over veiligheid: helmen en schoenen krijgen altijd "no".`;
 
   const body = {
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
     let tags = (Array.isArray(raw?.tags) ? raw.tags : [])
       .map(String)
       .filter((code): code is GearTag => (TAG_ENUM as string[]).includes(code));
-    // Veiligheidsnet: "tw" en "no" samen kan niet — "no" (veiligheid) wint.
+    // Veiligheidsnet: "tw" en "no" samen kan niet. "no" (veiligheid) wint.
     if (tags.includes("no")) tags = tags.filter((t) => t !== "tw");
 
     const priceNum = Number(raw?.price);

@@ -100,7 +100,7 @@ export default function GearView({
   return (
     <div className={"gear__wrap" + (isPending ? " is-busy" : "")}>
       <header className="gear__mast">
-        <h1>Uitrusting — inkoop &amp; budget</h1>
+        <h1>Uitrusting voor inkoop en budget</h1>
         <p className="form__lead">
           Kies je sporten, laat de AI een inkooplijst maken, vul echte prijzen in en vink af wat je hebt.
           De deadline per sport volgt je aankomende races.
@@ -184,7 +184,7 @@ export default function GearView({
           <span><i className="t op">optioneel</i> niet essentieel</span>
         </div>
         <p className="gear__legend-note">
-          <b>Let op:</b> helmen en schoenen nooit tweedehands — na een val is de bescherming onbetrouwbaar en pasvorm/demping zijn persoonlijk.
+          <b>Let op:</b> helmen en schoenen nooit tweedehands. Na een val is de bescherming onbetrouwbaar en pasvorm en demping zijn persoonlijk.
         </p>
       </footer>
     </div>
@@ -279,7 +279,7 @@ function AddSport({ events, onAdd, onAddEvent }: {
               <span>{event.title}</span>
               <small>{event.sport} · {event.date ? new Date(event.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Amsterdam" }) : "datum nog niet bekend"} · {event.location}</small>
             </button>
-          )) : <p>Geen event gevonden — gebruik `+ Sport` om “{value}” handmatig toe te voegen.</p>}
+          )) : <p>Geen event gevonden. Gebruik `+ Sport` om “{value}” handmatig toe te voegen.</p>}
         </div>
       )}
     </div>
@@ -458,7 +458,7 @@ function RacePicker({ section, events, onSelect, onSaveTrip, onCancel }: {
   const other = events.filter((event) => event.sport !== section.sport);
   const renderOption = (event: GearEventOption) => (
     <option key={event.id} value={event.id}>
-      {event.title} — {event.date ? new Date(event.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Amsterdam" }) : "ooit"} · {event.location}
+      {event.title} | {event.date ? new Date(event.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Amsterdam" }) : "ooit"} · {event.location}
     </option>
   );
 

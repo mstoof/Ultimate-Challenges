@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Securityprobleem
+    url: https://github.com/mstoof
+    about: Meld kwetsbaarheden privé en plaats geen gevoelige details in een openbaar issue.
+

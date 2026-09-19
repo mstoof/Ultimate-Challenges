@@ -30,7 +30,7 @@ export const users = pgTable("users", {
   image: text("image"),
   // "member" of "admin". Super-admin is vast op e-mailadres (zie lib/admin.ts).
   role: text("role").notNull().default("member"),
-  // Laatste keer dat iemand de app opende — voor het ledenoverzicht.
+  // Laatste keer dat iemand de app opende, voor het ledenoverzicht.
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -138,7 +138,7 @@ export const trainingProfiles = pgTable("training_profiles", {
   experience: text("experience"), // vrij veld: huidig niveau / km per week
   recoveryMethods: text("recovery_methods").notNull().default("[]"), // JSON: sauna, ijsbad, mobiliteit, etc.
   goal: text("goal"), // "wat wil je kunnen worden / doen"
-  // Voor de hartslagzones (zones 1–5). age → schatting max-HR als maxHr leeg is;
+  // Voor de hartslagzones van 1 tot 5. age → schatting max-HR als maxHr leeg is;
   // restHr maakt de Karvonen-berekening (hartslagreserve) mogelijk.
   age: integer("age"),
   maxHr: integer("max_hr"),
@@ -295,7 +295,7 @@ export const gearItems = pgTable(
     // Dezelfde fysieke aankoop in meerdere sporten, bv. "bike-gps".
     // Checkbox en handmatige prijs worden voor items met dezelfde sleutel gesynchroniseerd.
     sharedKey: text("shared_key"),
-    // 2–3 concrete productopties die de AI voorstelt (model/maat/prijsklasse),
+    // Twee of drie concrete productopties die de AI voorstelt (model/maat/prijsklasse),
     // afgestemd op de lichaamsmaten uit gear_profiles. Zie GearOption.
     options: jsonb("options").$type<GearOption[]>(),
     // Index in options[] die het lid koos; null = nog geen keuze.

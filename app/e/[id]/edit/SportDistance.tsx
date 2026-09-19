@@ -36,7 +36,7 @@ export default function SportDistance({
           value={distance}
           onChange={(e) => setDistance(e.target.value)}
         >
-          <option value="">— kies —</option>
+          <option value="">Kies een sport</option>
           {distance && !visible.has(distance) && <option value={distance}>{distance}</option>}
           {groups.map((g) => (
             <optgroup key={g.label} label={g.label}>

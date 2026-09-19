@@ -112,6 +112,7 @@ export default function ImportForm({ error, kind = "race", initialSport, fromGea
         {importError && <p className="form__error">{importError}</p>}
         {error === "leeg" && <p className="form__error">Naam, locatie en datum zijn verplicht.</p>}
         {error === "datum" && <p className="form__error">Die datum kon ik niet lezen.</p>}
+        {error === "link" && <p className="form__error">Gebruik voor een logo een openbare http(s)-link.</p>}
 
         <label htmlFor="title">Wat gaan we doen</label>
         <input
@@ -140,7 +141,7 @@ export default function ImportForm({ error, kind = "race", initialSport, fromGea
               value={f.distance}
               onChange={(e) => set("distance", e.target.value)}
             >
-              <option value="">— kies —</option>
+              <option value="">Kies een sport</option>
               {f.distance && !visible.has(f.distance) && (
                 <option value={f.distance}>{f.distance}</option>
               )}
@@ -199,7 +200,7 @@ export default function ImportForm({ error, kind = "race", initialSport, fromGea
             checked={f.someday}
             onChange={(e) => set("someday", e.target.checked)}
           />
-          Nog geen datum — zet op de <strong>someday</strong>-lijst (bucketlist)
+          Nog geen datum. Zet dit op de <strong>someday</strong>-lijst (bucketlist)
         </label>
 
         <label htmlFor="price">Deelnamekosten</label>

@@ -1,6 +1,6 @@
 /**
  * Bekende afstanden/duren, gegroepeerd per soort. Wordt als <select> met
- * <optgroup> getoond, zodat de lijst leesbaar is — ook op de telefoon.
+ * <optgroup> getoond, zodat de lijst ook op de telefoon leesbaar blijft.
  */
 export const DISTANCE_GROUPS: { label: string; options: string[] }[] = [
   {

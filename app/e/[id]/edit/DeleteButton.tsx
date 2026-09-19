@@ -16,7 +16,7 @@ function ConfirmButton() {
 }
 
 /**
- * Verwijderen is onomkeerbaar, dus een bevestiging ervoor — maar geen blokkerende
+ * Verwijderen is onomkeerbaar, dus tonen we eerst een bevestiging. Die moet niet
  * native confirm(). Eén klik "wapent" de knop (schildert meteen), de tweede klik
  * voert de server-actie uit.
  */

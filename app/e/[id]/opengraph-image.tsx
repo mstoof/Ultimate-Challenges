@@ -116,8 +116,7 @@ export default async function Image({ params }: { params: { id: string } }) {
           }}
         >
           {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} width={236} height={236} style={{ objectFit: "cover", borderRadius: 236 }} />
+            <img src={logo} alt="" width={236} height={236} style={{ objectFit: "cover", borderRadius: 236 }} />
           ) : (
             sportEmoji(event.sport)
           )}

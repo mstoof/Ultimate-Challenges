@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { SPORTS } from "@/lib/distances";
+import { safePublicUrl } from "@/lib/safe-url";
 
 // Gebruikt een gratis AI (Google Gemini) om uit een event-link de velden te
 // raden. Nooit blind opslaan: de gebruiker bevestigt in het formulier.
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /** Vind het merk-logo/afbeelding in de pagina: eerst een vierkant app-icoon,
  *  dan de og:image. Relatieve paden worden absoluut gemaakt. */
@@ -65,19 +67,27 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
   }
-  if (!url || !/^https?:\/\//i.test(url)) {
-    return NextResponse.json({ error: "Plak een geldige https-link." }, { status: 400 });
+  let safeUrl: URL;
+  try {
+    safeUrl = await safePublicUrl(url);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Ongeldige event-link." }, { status: 400 });
   }
 
   // Paginatekst ophalen. Lukt dat niet, dan mag de AI het met de URL + kennis doen.
   let pageText = "";
   let rawHtml = "";
   try {
-    const page = await fetch(url, {
+    const page = await fetch(safeUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (UltimateChallenges bot)" },
+      redirect: "manual",
       signal: AbortSignal.timeout(10000),
     });
-    rawHtml = await page.text();
+    if (page.status >= 300 && page.status < 400) throw new Error("redirect");
+    if (!page.ok) throw new Error("http");
+    const length = Number(page.headers.get("content-length") ?? 0);
+    if (length > 2_000_000) throw new Error("too-large");
+    rawHtml = (await page.text()).slice(0, 2_000_000);
     pageText = htmlToText(rawHtml).slice(0, 12000);
   } catch {
     /* laat leeg */
@@ -97,7 +107,7 @@ export async function POST(req: Request) {
     system_instruction: { parts: [{ text: instruction }] },
     contents: [
       {
-        parts: [{ text: `URL: ${url}\n\nPaginatekst:\n${pageText || "(kon de pagina niet ophalen)"}` }],
+        parts: [{ text: `URL: ${safeUrl.href}\n\nPaginatekst:\n${pageText || "(kon de pagina niet ophalen)"}` }],
       },
     ],
     generationConfig: {
@@ -156,6 +166,12 @@ export async function POST(req: Request) {
   }
 
   // Het merk-logo komt uit de HTML, niet uit de AI.
-  data.imageUrl = extractImage(rawHtml, url);
+  const extractedImage = extractImage(rawHtml, safeUrl.href);
+  if (extractedImage) {
+    try { data.imageUrl = (await safePublicUrl(extractedImage)).href; }
+    catch { data.imageUrl = ""; }
+  } else {
+    data.imageUrl = "";
+  }
   return NextResponse.json(data);
 }
